@@ -1,0 +1,3157 @@
+openapi: 3.0.3
+info:
+    title: GO ARCA API
+    version: "2.0"
+    description: API REST para gestión de emisores, puntos de venta, credenciales API y facturación electrónica con ARCA.
+    contact:
+        name: Equipo GOFIP
+        email: soporte@unkcode.com
+servers:
+    - url: /
+security:
+    - BearerAuth: []
+    - CookieAuth: []
+tags:
+    - name: Utilidades
+    - name: Autenticación
+    - name: Emisores
+    - name: Puntos de venta
+    - name: Credenciales
+    - name: Admin
+    - name: ARCA Catálogos
+    - name: ARCA Padrón
+    - name: ARCA Transacciones
+    - name: Documentos
+paths:
+    /api/v2/salud:
+        get:
+            tags: [Utilidades]
+            summary: Verificación de estado del servicio
+            security: []
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
+                                example: OK
+
+    /api/v2/autenticacion/iniciar-sesion:
+        post:
+            tags: [Autenticación]
+            summary: Inicia sesión
+            description: Autentica credenciales y devuelve el token JWT en una cookie y en el cuerpo.
+            security: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudIniciarSesion"
+            responses:
+                "200":
+                    description: Sesión autenticada
+                    headers:
+                        Set-Cookie:
+                            schema:
+                                type: string
+                            description: Cookie jwt HTTP Only.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaIniciarSesion"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/autenticacion/registrar:
+        post:
+            tags: [Autenticación]
+            summary: Registra un usuario
+            description: Crea una cuenta de usuario y envía un correo de verificación.
+            security: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudRegistrarUsuario"
+            responses:
+                "200":
+                    description: Usuario registrado
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaRegistrarUsuario"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/autenticacion/recuperar-cuenta:
+        post:
+            tags: [Autenticación]
+            summary: Solicita recuperación de cuenta
+            description: Envía un correo con un enlace para restablecer la contraseña.
+            security: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudRecuperarCuenta"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/autenticacion/restablecer-contrasena/{token}:
+        post:
+            tags: [Autenticación]
+            summary: Restablece contraseña
+            description: Define una nueva contraseña utilizando un token válido.
+            security: []
+            parameters:
+                - $ref: "#/components/parameters/Token"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudRestablecerContrasena"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/autenticacion/cerrar-sesion:
+        post:
+            tags: [Autenticación]
+            summary: Cierra sesión
+            description: Invalida la cookie de autenticación del panel web.
+            security:
+                - CookieAuth: []
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+
+    /api/v2/autenticacion/verificar-email/{token}:
+        post:
+            tags: [Autenticación]
+            summary: Verifica email
+            description: Confirma el correo del usuario a partir del token recibido por email.
+            security: []
+            parameters:
+                - $ref: "#/components/parameters/Token"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/emisores:
+        get:
+            tags: [Emisores]
+            summary: Lista emisores del usuario autenticado
+            security:
+                - CookieAuth: []
+            responses:
+                "200":
+                    description: Emisores
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaEmisores"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        put:
+            tags: [Emisores]
+            summary: Crea un emisor
+            description: Crea un emisor asociado al usuario autenticado y almacena el certificado digital recibido.
+            security:
+                - CookieAuth: []
+            requestBody:
+                required: true
+                content:
+                    multipart/form-data:
+                        schema:
+                            $ref: "#/components/schemas/MultipartCrearEmisor"
+            responses:
+                "200":
+                    description: Emisor creado
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCrearEmisor"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/emisores/{id-emisor}:
+        patch:
+            tags: [Emisores]
+            summary: Actualiza un emisor
+            description: Modifica datos fiscales y, si se envían ambos archivos, reemplaza certificado y clave privada.
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+            requestBody:
+                required: true
+                content:
+                    multipart/form-data:
+                        schema:
+                            $ref: "#/components/schemas/MultipartActualizarEmisor"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        delete:
+            tags: [Emisores]
+            summary: Elimina un emisor
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/emisores/{id-emisor}/puntos-venta:
+        get:
+            tags: [Puntos de venta]
+            summary: Lista puntos de venta del emisor
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+            responses:
+                "200":
+                    description: Puntos de venta
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPuntosVentaEmisor"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        put:
+            tags: [Puntos de venta]
+            summary: Crea un punto de venta
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudPuntoVenta"
+            responses:
+                "200":
+                    description: Punto de venta creado
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCrearPuntoVenta"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/emisores/{id-emisor}/puntos-venta/{punto-venta-id}:
+        patch:
+            tags: [Puntos de venta]
+            summary: Actualiza un punto de venta
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+                - $ref: "#/components/parameters/IdPuntoVenta"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudPuntoVenta"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        delete:
+            tags: [Puntos de venta]
+            summary: Elimina un punto de venta
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdEmisor"
+                - $ref: "#/components/parameters/IdPuntoVenta"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/puntos-venta/{punto-venta-id}/credenciales:
+        get:
+            tags: [Credenciales]
+            summary: Lista credenciales API del punto de venta
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdPuntoVenta"
+            responses:
+                "200":
+                    description: Credenciales del punto de venta
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCredencialesPuntoVenta"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        post:
+            tags: [Credenciales]
+            summary: Crea una credencial API para un punto de venta
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdPuntoVenta"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudCrearCredencial"
+            responses:
+                "200":
+                    description: Credencial creada. La API key completa solo se devuelve en esta respuesta.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCrearCredencial"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/credenciales/{credencial-id}/regenerar:
+        post:
+            tags: [Credenciales]
+            summary: Regenera la API key de una credencial
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdCredencial"
+            responses:
+                "200":
+                    description: API key regenerada
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaRegenerarCredencial"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/credenciales/{credencial-id}/revocar:
+        patch:
+            tags: [Credenciales]
+            summary: Revoca una credencial
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdCredencial"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/credenciales/{credencial-id}/autorizaciones:
+        get:
+            tags: [Credenciales]
+            summary: Lista autorizaciones de una credencial
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdCredencial"
+            responses:
+                "200":
+                    description: Autorizaciones de la credencial
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaAutorizacionesCredencial"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        post:
+            tags: [Credenciales]
+            summary: Crea una autorización de uso de credencial
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdCredencial"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudCrearAutorizacionCredencial"
+            responses:
+                "200":
+                    description: Autorización creada
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCrearAutorizacionCredencial"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/credenciales/autorizaciones/{autorizacion-id}:
+        patch:
+            tags: [Credenciales]
+            summary: Habilita o deshabilita una autorización
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdAutorizacion"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudActualizarAutorizacionCredencial"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+        delete:
+            tags: [Credenciales]
+            summary: Elimina una autorización
+            security:
+                - CookieAuth: []
+            parameters:
+                - $ref: "#/components/parameters/IdAutorizacion"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Nulo"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/tipos-autorizacion:
+        get:
+            tags: [Credenciales]
+            summary: Lista tipos de autorización disponibles
+            security:
+                - CookieAuth: []
+            responses:
+                "200":
+                    description: Tipos de autorización
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaTiposAutorizacion"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/admin/metricas:
+        get:
+            tags: [Admin]
+            summary: Obtiene métricas básicas globales
+            security:
+                - CookieAuth: []
+            responses:
+                "200":
+                    description: Métricas
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/MetricasAdmin"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/disponibilidad:
+        get:
+            tags: [Utilidades]
+            summary: Consulta disponibilidad de la API
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: Adaptador disponible
+                    content:
+                        application/json:
+                            schema:
+                                type: string
+                                example: pong
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/medios-pago:
+        get:
+            tags: [Utilidades]
+            summary: Lista medios de pago locales
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: Medios de pago locales
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaMediosPago"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/documentos/comprobante:
+        post:
+            tags: [Documentos]
+            summary: Genera PDF/HTML de un comprobante autorizado
+            security:
+                - BearerAuth: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudDocumentoComprobante"
+            responses:
+                "200":
+                    $ref: "#/components/responses/Archivo"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/templates-oficiales:
+        get:
+            tags: [Documentos]
+            summary: Lista los templates oficiales disponibles
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: Última versión estable válida de cada template
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaTemplatesOficiales"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/templates-oficiales/{slug}/documentos:
+        post:
+            tags: [Documentos]
+            summary: Genera un documento no fiscal desde un template oficial
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: slug
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - name: Idempotency-Key
+                  in: header
+                  required: false
+                  schema:
+                      type: string
+                      maxLength: 120
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SolicitudGenerarDocumentoNoFiscal"
+            responses:
+                "200":
+                    description: Documento recuperado por idempotencia
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaDocumentoNoFiscal"
+                "201":
+                    description: Documento generado
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaDocumentoNoFiscal"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/documentos-no-fiscales/{documento-id}/pdf:
+        get:
+            tags: [Documentos]
+            summary: Obtiene o regenera el PDF de un documento no fiscal
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DocumentoID"
+            responses:
+                "200":
+                    description: URL firmada temporal del PDF
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaDocumentoNoFiscal"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/factura/{documento-id}/pdf:
+        post:
+            tags: [Documentos]
+            summary: Genera o regenera el PDF de una factura autorizada
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/DocumentoID"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudGenerarPDFFactura"
+            responses:
+                "200":
+                    description: URL firmada de descarga del PDF
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPDFFactura"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/estado:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Consulta estado de WSFE
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Estado del servicio WSFE
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaEstadoServicio"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/puntos-venta:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista puntos de venta fiscales desde ARCA
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Puntos de venta fiscales
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPuntosVentaARCA"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/tributos:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista tributos
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Tributos disponibles
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaTributos"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/conceptos:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista conceptos
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Conceptos de facturación
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaConceptos"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/alicuotas:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista alícuotas IVA
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Alícuotas de IVA
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaAlicuotas"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/tipos-comprobante:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista tipos de comprobante
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Tipos de comprobante
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaTiposComprobante"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/opcionales:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista opcionales
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Opcionales WSFE
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaOpcionales"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/tipos-documento:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista tipos de documento
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Tipos de documento
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaTiposDocumento"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/monedas:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Lista monedas
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+            responses:
+                "200":
+                    description: Monedas
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaMonedas"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/monedas/{id-moneda}/cotizacion:
+        get:
+            tags: [ARCA Catálogos]
+            summary: Obtiene cotización de una moneda
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/IdMoneda"
+            responses:
+                "200":
+                    description: Cotización
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaCotizacionMoneda"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/padron/p4/personas/{cuit}:
+        get:
+            tags: [ARCA Padrón]
+            summary: Obtiene persona por Padrón P4
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/CUIT"
+            responses:
+                "200":
+                    description: Persona de padrón P4
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPersonaPadron"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/padron/p5/personas/{cuit}:
+        get:
+            tags: [ARCA Padrón]
+            summary: Obtiene persona por Padrón P5
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/CUIT"
+            responses:
+                "200":
+                    description: Persona de padrón P5
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPersonaPadron"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/padron/p10/personas/{cuit}:
+        get:
+            tags: [ARCA Padrón]
+            summary: Obtiene persona por Padrón P10
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/CUIT"
+            responses:
+                "200":
+                    description: Persona de padrón P10
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPersonaPadron"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/padron/p13/personas/{tipo-documento}/{identificador}:
+        get:
+            tags: [ARCA Padrón]
+            summary: Obtiene persona por Padrón P13
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - name: tipo-documento
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                      enum: [dni, cuit, cuil]
+                - name: identificador
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Persona de padrón P13
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaPersonaPadron"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/comprobantes/{punto-venta}/{tipo-comprobante}/{numero-comprobante}:
+        get:
+            tags: [ARCA Transacciones]
+            summary: Obtiene un comprobante emitido
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/PuntoVentaFiscal"
+                - $ref: "#/components/parameters/TipoComprobante"
+                - $ref: "#/components/parameters/NumeroComprobante"
+            responses:
+                "200":
+                    description: Comprobante consultado
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ComprobanteConsultado"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+    /api/v2/arca/factura:
+        post:
+            tags: [ARCA Transacciones]
+            summary: Emite una factura fiscal y opcionalmente genera su PDF
+            security:
+                - BearerAuth: []
+            parameters:
+                - $ref: "#/components/parameters/AmbienteARCA"
+                - $ref: "#/components/parameters/IdempotencyKey"
+                - $ref: "#/components/parameters/ExternalReference"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CuerpoSolicitudEmitirFactura"
+            responses:
+                "200":
+                    description: Factura autorizada
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RespuestaEmitirFactura"
+                "400":
+                    $ref: "#/components/responses/Error"
+                "401":
+                    $ref: "#/components/responses/Error"
+                "403":
+                    $ref: "#/components/responses/Error"
+                "404":
+                    $ref: "#/components/responses/Error"
+                "409":
+                    $ref: "#/components/responses/Error"
+                "500":
+                    $ref: "#/components/responses/Error"
+
+components:
+    securitySchemes:
+        BearerAuth:
+            type: http
+            scheme: bearer
+            description: API key de credencial enviada como Bearer token.
+        CookieAuth:
+            type: apiKey
+            in: cookie
+            name: jwt
+            description: Cookie HTTP Only emitida por el panel web.
+    parameters:
+        AmbienteARCA:
+            name: X-ARCA-Ambiente
+            in: header
+            required: false
+            description: Ambiente ARCA a utilizar. Si se omite, se usa produccion.
+            schema:
+                type: string
+                enum: [homologacion, produccion]
+                default: produccion
+        Token:
+            name: token
+            in: path
+            required: true
+            schema:
+                type: string
+        IdEmisor:
+            name: id-emisor
+            in: path
+            required: true
+            schema:
+                type: string
+        IdPuntoVenta:
+            name: punto-venta-id
+            in: path
+            required: true
+            schema:
+                type: string
+        IdCredencial:
+            name: credencial-id
+            in: path
+            required: true
+            schema:
+                type: string
+        IdAutorizacion:
+            name: autorizacion-id
+            in: path
+            required: true
+            schema:
+                type: string
+        DocumentoID:
+            name: documento-id
+            in: path
+            required: true
+            schema:
+                type: string
+        CUIT:
+            name: cuit
+            in: path
+            required: true
+            schema:
+                type: string
+                pattern: "^[0-9]{11}$"
+        PuntoVentaFiscal:
+            name: punto-venta
+            in: path
+            required: true
+            schema:
+                type: integer
+        TipoComprobante:
+            name: tipo-comprobante
+            in: path
+            required: true
+            schema:
+                type: integer
+        NumeroComprobante:
+            name: numero-comprobante
+            in: path
+            required: true
+            schema:
+                type: integer
+                format: int64
+        IdMoneda:
+            name: id-moneda
+            in: path
+            required: true
+            schema:
+                type: string
+        IdempotencyKey:
+            name: Idempotency-Key
+            in: header
+            required: false
+            schema:
+                type: string
+                maxLength: 120
+        ExternalReference:
+            name: X-External-Reference
+            in: header
+            required: false
+            schema:
+                type: string
+                maxLength: 120
+    responses:
+        Nulo:
+            description: Operación exitosa sin cuerpo
+            content:
+                application/json:
+                    schema:
+                        nullable: true
+                        example: null
+        Error:
+            description: Error de negocio, validación o infraestructura
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/DetallesError"
+        Archivo:
+            description: Archivo PDF o HTML generado
+            content:
+                application/pdf:
+                    schema:
+                        type: string
+                        format: binary
+                text/html:
+                    schema:
+                        type: string
+    schemas:
+        DetallesError:
+            type: object
+            required: [title, status, detail]
+            properties:
+                code:
+                    type: string
+                type:
+                    type: string
+                    example: about:blank
+                title:
+                    type: string
+                status:
+                    type: integer
+                detail:
+                    type: string
+                instance:
+                    type: string
+                request_id:
+                    type: string
+                    nullable: true
+
+        CuerpoSolicitudIniciarSesion:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudIniciarSesion"
+        CuerpoSolicitudRegistrarUsuario:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudRegistrarUsuario"
+        CuerpoSolicitudRecuperarCuenta:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudRecuperarCuenta"
+        CuerpoSolicitudRestablecerContrasena:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudRestablecerContrasena"
+        CuerpoSolicitudPuntoVenta:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudPuntoVenta"
+        CuerpoSolicitudCrearCredencial:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudCrearCredencial"
+        CuerpoSolicitudCrearAutorizacionCredencial:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudCrearAutorizacionCredencial"
+        CuerpoSolicitudActualizarAutorizacionCredencial:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudActualizarAutorizacionCredencial"
+        CuerpoSolicitudDocumentoComprobante:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudDocumentoComprobante"
+        CuerpoSolicitudEmitirFactura:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudEmitirFactura"
+        CuerpoSolicitudGenerarPDFFactura:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    $ref: "#/components/schemas/SolicitudGenerarPDFFactura"
+
+        SolicitudIniciarSesion:
+            type: object
+            required: [email, contrasena, mantener_sesion]
+            properties:
+                email:
+                    type: string
+                    format: email
+                contrasena:
+                    type: string
+                    format: password
+                mantener_sesion:
+                    type: boolean
+        SolicitudRegistrarUsuario:
+            type: object
+            required: [nombre, apellido, email, contrasena]
+            properties:
+                nombre:
+                    type: string
+                apellido:
+                    type: string
+                email:
+                    type: string
+                    format: email
+                contrasena:
+                    type: string
+                    format: password
+        SolicitudRecuperarCuenta:
+            type: object
+            required: [email]
+            properties:
+                email:
+                    type: string
+                    format: email
+        SolicitudRestablecerContrasena:
+            type: object
+            required: [contrasena]
+            properties:
+                contrasena:
+                    type: string
+                    format: password
+        RespuestaIniciarSesion:
+            type: object
+            required: [token_autenticacion]
+            properties:
+                token_autenticacion:
+                    type: string
+        RespuestaRegistrarUsuario:
+            type: object
+            required: [id_usuario]
+            properties:
+                id_usuario:
+                    type: string
+
+        MultipartCrearEmisor:
+            type: object
+            required: [data, certificado, clave_privada]
+            properties:
+                data:
+                    type: string
+                    description: JSON serializado con los campos de SolicitudCrearEmisor.
+                    example: '{"cuit":"20123456789","fecha_inicio_actividad":"20200101","razon_social":"Empresa SA","domicilio_fiscal":"Calle 123","condicion_fiscal":6}'
+                certificado:
+                    type: string
+                    format: binary
+                clave_privada:
+                    type: string
+                    format: binary
+        MultipartActualizarEmisor:
+            type: object
+            required: [data]
+            properties:
+                data:
+                    type: string
+                    description: JSON serializado con los campos de SolicitudActualizarEmisor.
+                    example: '{"razon_social":"Empresa SA","domicilio_fiscal":"Calle 123","condicion_fiscal":6}'
+                certificado:
+                    type: string
+                    format: binary
+                clave_privada:
+                    type: string
+                    format: binary
+        SolicitudCrearEmisor:
+            type: object
+            required: [cuit, fecha_inicio_actividad, razon_social, domicilio_fiscal, condicion_fiscal]
+            properties:
+                cuit:
+                    type: string
+                    pattern: "^[0-9]{11}$"
+                fecha_inicio_actividad:
+                    type: string
+                razon_social:
+                    type: string
+                domicilio_fiscal:
+                    type: string
+                condicion_fiscal:
+                    type: integer
+        SolicitudActualizarEmisor:
+            type: object
+            required: [razon_social, domicilio_fiscal, condicion_fiscal]
+            properties:
+                razon_social:
+                    type: string
+                domicilio_fiscal:
+                    type: string
+                condicion_fiscal:
+                    type: integer
+        RespuestaEmisores:
+            type: object
+            required: [emisores]
+            properties:
+                emisores:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Emisor"
+        RespuestaCrearEmisor:
+            type: object
+            required: [id_emisor]
+            properties:
+                id_emisor:
+                    type: string
+        Emisor:
+            type: object
+            properties:
+                id:
+                    type: string
+                id_usuario:
+                    type: string
+                cuit:
+                    type: string
+                    pattern: "^[0-9]{11}$"
+                fecha_inicio_actividad:
+                    type: string
+                razon_social:
+                    type: string
+                domicilio_fiscal:
+                    type: string
+                condicion_fiscal:
+                    type: string
+                aplicaciones:
+                    type: array
+                    nullable: true
+                    items:
+                        $ref: "#/components/schemas/Aplicacion"
+                vencimiento_certificado:
+                    type: string
+                    format: date-time
+
+        SolicitudPuntoVenta:
+            type: object
+            required: [nombre, nro_pto_vta_fiscal]
+            properties:
+                nombre:
+                    type: string
+                nro_pto_vta_fiscal:
+                    type: integer
+                estado:
+                    type: string
+                    enum: [activo, inactivo]
+                logo_factura_url:
+                    type: string
+                img_fondo_factura_url:
+                    type: string
+                website_url:
+                    type: string
+                enviar_factura_mail:
+                    type: boolean
+                autorizacion_requerida:
+                    type: boolean
+        PuntoVenta:
+            type: object
+            properties:
+                punto_venta_id:
+                    type: string
+                emisor_id:
+                    type: string
+                nombre:
+                    type: string
+                nro_pto_vta_fiscal:
+                    type: integer
+                estado:
+                    type: string
+                    enum: [activo, inactivo]
+                logo_factura_url:
+                    type: string
+                img_fondo_factura_url:
+                    type: string
+                website_url:
+                    type: string
+                enviar_factura_mail:
+                    type: boolean
+                autorizacion_requerida:
+                    type: boolean
+                credenciales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CredencialPuntoVenta"
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        RespuestaPuntosVentaEmisor:
+            type: object
+            required: [puntos_venta]
+            properties:
+                puntos_venta:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/PuntoVenta"
+        RespuestaCrearPuntoVenta:
+            type: object
+            required: [punto_venta_id]
+            properties:
+                punto_venta_id:
+                    type: string
+
+        SolicitudCrearCredencial:
+            type: object
+            required: [etiqueta]
+            properties:
+                etiqueta:
+                    type: string
+                expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        RespuestaCrearCredencial:
+            type: object
+            required: [credencial_id, api_key, api_key_prefix]
+            properties:
+                credencial_id:
+                    type: string
+                api_key:
+                    type: string
+                api_key_prefix:
+                    type: string
+        RespuestaRegenerarCredencial:
+            type: object
+            required: [api_key]
+            properties:
+                api_key:
+                    type: string
+        CredencialPuntoVenta:
+            type: object
+            properties:
+                credencial_id:
+                    type: string
+                punto_venta_id:
+                    type: string
+                api_key_prefix:
+                    type: string
+                etiqueta:
+                    type: string
+                activo:
+                    type: boolean
+                ultimo_uso_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                revoked_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                autorizaciones:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CredencialAutorizacionUso"
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        CredencialPuntoVentaResumen:
+            type: object
+            properties:
+                credencial_id:
+                    type: string
+                etiqueta:
+                    type: string
+                api_key_prefix:
+                    type: string
+                activo:
+                    type: boolean
+                ultimo_uso_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                revoked_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        RespuestaCredencialesPuntoVenta:
+            type: object
+            required: [credenciales]
+            properties:
+                credenciales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CredencialPuntoVentaResumen"
+        TipoAutorizacion:
+            type: object
+            properties:
+                tipo_autorizacion_id:
+                    type: integer
+                slug:
+                    type: string
+                etiqueta:
+                    type: string
+                regex:
+                    type: string
+        CredencialAutorizacionUso:
+            type: object
+            properties:
+                autorizacion_id:
+                    type: string
+                credencial_id:
+                    type: string
+                tipo_autorizacion_id:
+                    type: integer
+                tipo_autorizacion:
+                    $ref: "#/components/schemas/TipoAutorizacion"
+                valor:
+                    type: string
+                habilitado:
+                    type: boolean
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        RespuestaAutorizacionesCredencial:
+            type: object
+            required: [autorizaciones]
+            properties:
+                autorizaciones:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CredencialAutorizacionUso"
+        RespuestaTiposAutorizacion:
+            type: object
+            required: [tipos_autorizacion]
+            properties:
+                tipos_autorizacion:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoAutorizacion"
+        SolicitudCrearAutorizacionCredencial:
+            type: object
+            required: [tipo_autorizacion_id, valor]
+            properties:
+                tipo_autorizacion_id:
+                    type: integer
+                valor:
+                    type: string
+        SolicitudActualizarAutorizacionCredencial:
+            type: object
+            required: [habilitado]
+            properties:
+                habilitado:
+                    type: boolean
+        RespuestaCrearAutorizacionCredencial:
+            type: object
+            required: [autorizacion_id]
+            properties:
+                autorizacion_id:
+                    type: string
+
+        MetricasAdmin:
+            type: object
+            properties:
+                total_usuarios:
+                    type: integer
+                    format: int64
+                total_emisores:
+                    type: integer
+                    format: int64
+                total_documentos:
+                    type: integer
+                    format: int64
+                total_facturas:
+                    type: integer
+                    format: int64
+                volumen_facturado:
+                    type: number
+                    format: double
+
+        Aplicacion:
+            type: object
+            properties:
+                id:
+                    type: string
+                id_emisor:
+                    type: string
+                etiqueta:
+                    type: string
+                clave_api:
+                    type: string
+                punto_venta:
+                    type: integer
+                host_habilitado:
+                    type: string
+                    nullable: true
+                estado:
+                    type: integer
+                url_logo:
+                    type: string
+                url_logo_fondo:
+                    type: string
+                url_sitio_web:
+                    type: string
+                envio_automatico_correo:
+                    type: boolean
+                ultimo_uso:
+                    type: string
+                    format: date-time
+                tokens:
+                    type: array
+                    nullable: true
+                    items:
+                        $ref: "#/components/schemas/TokenWSARCA"
+        TokenWSARCA:
+            type: object
+            properties:
+                token_ws_arca_id:
+                    type: string
+                emisor_id:
+                    type: string
+                arca_certificado_id:
+                    type: string
+                servicio:
+                    type: string
+                firma:
+                    type: string
+                token:
+                    type: string
+                expiracion:
+                    type: string
+                    format: date-time
+                created_at:
+                    type: string
+                    format: date-time
+
+        MedioPago:
+            type: object
+            required: [id, descripcion]
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+        RespuestaMediosPago:
+            type: object
+            required: [medios_pago]
+            properties:
+                medios_pago:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/MedioPago"
+
+        EstadoWS:
+            type: object
+            properties:
+                servidor_aplicacion:
+                    type: string
+                servidor_base_datos:
+                    type: string
+                servidor_autenticacion:
+                    type: string
+        RespuestaEstadoServicio:
+            type: object
+            required: [estado]
+            properties:
+                estado:
+                    $ref: "#/components/schemas/EstadoWS"
+        TipoTributo:
+            type: object
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        TipoConcepto:
+            type: object
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        TipoAlicuota:
+            type: object
+            properties:
+                id:
+                    type: string
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        TipoComprobanteARCA:
+            type: object
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        TipoDocumentoARCA:
+            type: object
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        TipoOpcional:
+            type: object
+            properties:
+                id:
+                    type: string
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        Moneda:
+            type: object
+            properties:
+                id:
+                    type: string
+                descripcion:
+                    type: string
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        CotizacionMoneda:
+            type: object
+            properties:
+                moneda_id:
+                    type: string
+                cotizacion:
+                    type: number
+                    format: double
+                fch_cotiz:
+                    type: string
+        PuntoVentaARCA:
+            type: object
+            properties:
+                numero:
+                    type: integer
+                tipo_emision:
+                    type: string
+                bloqueado:
+                    type: string
+                fch_baja:
+                    type: string
+        RespuestaTributos:
+            type: object
+            required: [tributos]
+            properties:
+                tributos:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoTributo"
+        RespuestaConceptos:
+            type: object
+            required: [conceptos]
+            properties:
+                conceptos:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoConcepto"
+        RespuestaAlicuotas:
+            type: object
+            required: [alicuotas]
+            properties:
+                alicuotas:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoAlicuota"
+        RespuestaTiposComprobante:
+            type: object
+            required: [tipos_comprobante]
+            properties:
+                tipos_comprobante:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoComprobanteARCA"
+        RespuestaOpcionales:
+            type: object
+            required: [opcionales]
+            properties:
+                opcionales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoOpcional"
+        RespuestaTiposDocumento:
+            type: object
+            required: [tipos_documento]
+            properties:
+                tipos_documento:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TipoDocumentoARCA"
+        RespuestaMonedas:
+            type: object
+            required: [monedas]
+            properties:
+                monedas:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Moneda"
+        RespuestaCotizacionMoneda:
+            type: object
+            required: [cotizacion]
+            properties:
+                cotizacion:
+                    $ref: "#/components/schemas/CotizacionMoneda"
+        RespuestaPuntosVentaARCA:
+            type: object
+            required: [puntos_venta]
+            properties:
+                puntos_venta:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/PuntoVentaARCA"
+
+        SolicitudEmitirFactura:
+            type: object
+            required: [factura]
+            properties:
+                factura:
+                    $ref: "#/components/schemas/Comprobante"
+                metadatos:
+                    $ref: "#/components/schemas/MetadatosComprobante"
+                tamano_papel:
+                    type: string
+                    enum: [a4, 80mm]
+        SolicitudGenerarPDFFactura:
+            type: object
+            required: [metadatos]
+            properties:
+                metadatos:
+                    $ref: "#/components/schemas/MetadatosComprobante"
+                tamano_papel:
+                    type: string
+                    enum: [a4, 80mm]
+        RespuestaEmitirFactura:
+            type: object
+            required: [factura]
+            properties:
+                documento_id:
+                    type: string
+                factura:
+                    $ref: "#/components/schemas/ComprobanteAutorizado"
+                pdf_url:
+                    type: string
+                    format: uri
+                pdf_content_type:
+                    type: string
+        RespuestaPDFFactura:
+            type: object
+            required: [documento_id, pdf_url]
+            properties:
+                documento_id:
+                    type: string
+                pdf_url:
+                    type: string
+                    format: uri
+                pdf_content_type:
+                    type: string
+        SolicitudGenerarDocumentoNoFiscal:
+            type: object
+            required: [datos]
+            properties:
+                datos:
+                    type: object
+                    additionalProperties: true
+        TemplateOficial:
+            type: object
+            required: [slug, version, nombre, descripcion, autor, ultima_modificacion, schema_datos]
+            properties:
+                slug:
+                    type: string
+                version:
+                    type: string
+                nombre:
+                    type: string
+                descripcion:
+                    type: string
+                autor:
+                    type: string
+                ultima_modificacion:
+                    type: string
+                    format: date-time
+                schema_datos:
+                    type: object
+                    additionalProperties: true
+        RespuestaTemplatesOficiales:
+            type: object
+            required: [templates]
+            properties:
+                templates:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TemplateOficial"
+        RespuestaDocumentoNoFiscal:
+            type: object
+            required: [documento_id, template_slug, template_version, pdf_url, pdf_content_type, pdf_generated_at]
+            properties:
+                documento_id:
+                    type: string
+                template_slug:
+                    type: string
+                template_version:
+                    type: string
+                pdf_url:
+                    type: string
+                    format: uri
+                pdf_content_type:
+                    type: string
+                pdf_generated_at:
+                    type: string
+                    format: date-time
+        SolicitudDocumentoComprobante:
+            type: object
+            required: [comprobante, metadatos, items]
+            properties:
+                comprobante:
+                    $ref: "#/components/schemas/ComprobanteAutorizado"
+                metadatos:
+                    $ref: "#/components/schemas/MetadatosComprobante"
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ItemComprobante"
+                tamano_papel:
+                    type: string
+                    enum: [a4, 80mm]
+        MetadatosDocumento:
+            type: object
+            required: [condicion_fiscal_cliente]
+            properties:
+                condicion_fiscal_cliente:
+                    type: integer
+                telefono_cliente:
+                    type: string
+                email_cliente:
+                    type: string
+                    format: email
+                domicilio_cliente:
+                    type: string
+                nombre_o_razon_social_cliente:
+                    type: string
+        MetadatosComprobante:
+            allOf:
+                - $ref: "#/components/schemas/MetadatosDocumento"
+                - type: object
+                  required: [metodo_pago]
+                  properties:
+                      metodo_pago:
+                          type: integer
+                      total_oini:
+                          type: number
+                          format: double
+                      alias_moneda:
+                          type: string
+
+        Comprobante:
+            type: object
+            required: [tipo_comprobante, concepto, tipo_documento, numero_documento, condicion_fiscal, detalles]
+            properties:
+                tipo_comprobante:
+                    type: integer
+                concepto:
+                    type: integer
+                tipo_documento:
+                    type: integer
+                numero_documento:
+                    type: integer
+                    format: int64
+                condicion_fiscal:
+                    type: integer
+                fecha_comprobante:
+                    type: string
+                    nullable: true
+                moneda_id:
+                    type: string
+                    nullable: true
+                cotizacion:
+                    type: number
+                    format: double
+                    nullable: true
+                fecha_servicio_desde:
+                    type: string
+                    nullable: true
+                fecha_servicio_hasta:
+                    type: string
+                    nullable: true
+                fecha_vencimiento_pago:
+                    type: string
+                    nullable: true
+                cancela_misma_moneda:
+                    type: string
+                    nullable: true
+                detalles:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ItemComprobante"
+                comprobantes_asociados:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ComprobanteAsociado"
+                tributos:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TributoComprobante"
+                opcionales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/OpcionalComprobante"
+                compradores:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CompradorComprobante"
+                consolidar_items:
+                    type: boolean
+                    nullable: true
+        ItemComprobante:
+            type: object
+            required: [id, descripcion, precio_unitario, cantidad, alicuotas_iva, subtotal]
+            properties:
+                id:
+                    type: string
+                descripcion:
+                    type: string
+                precio_unitario:
+                    type: number
+                    format: double
+                cantidad:
+                    type: number
+                    format: double
+                alicuotas_iva:
+                    type: string
+                iva_exento:
+                    type: boolean
+                    nullable: true
+                no_gravadode_iva:
+                    type: boolean
+                    nullable: true
+                subtotal:
+                    type: number
+                    format: double
+                monto_iva:
+                    type: number
+                    format: double
+                total_con_iva:
+                    type: number
+                    format: double
+                precio_con_iva:
+                    type: number
+                    format: double
+        IVAComprobante:
+            type: object
+            required: [id, base_imponible, importe]
+            properties:
+                id:
+                    type: integer
+                base_imponible:
+                    type: number
+                    format: double
+                importe:
+                    type: number
+                    format: double
+        TributoComprobante:
+            type: object
+            required: [id, descripcion, base_imponible, alicuota, importe]
+            properties:
+                id:
+                    type: integer
+                descripcion:
+                    type: string
+                base_imponible:
+                    type: number
+                    format: double
+                alicuota:
+                    type: number
+                    format: double
+                importe:
+                    type: number
+                    format: double
+        OpcionalComprobante:
+            type: object
+            required: [id, valor]
+            properties:
+                id:
+                    type: integer
+                valor:
+                    type: number
+                    format: double
+        CompradorComprobante:
+            type: object
+            required: [tipo_documento, numero_documento, porcentaje]
+            properties:
+                tipo_documento:
+                    type: integer
+                numero_documento:
+                    type: integer
+                    format: int64
+                porcentaje:
+                    type: number
+                    format: double
+        ComprobanteAsociado:
+            type: object
+            required: [numero, tipo, cuit, punto_venta]
+            properties:
+                numero:
+                    type: integer
+                tipo:
+                    type: integer
+                cuit:
+                    type: integer
+                    format: int64
+                punto_venta:
+                    type: integer
+        ActividadComprobante:
+            type: object
+            required: [id]
+            properties:
+                id:
+                    type: integer
+                    format: int64
+        PeriodoComprobante:
+            type: object
+            required: [fecha_desde, fecha_hasta]
+            properties:
+                fecha_desde:
+                    type: string
+                fecha_hasta:
+                    type: string
+        ObservacionComprobante:
+            type: object
+            properties:
+                codigo:
+                    type: integer
+                mensaje:
+                    type: string
+        ComprobanteAutorizado:
+            type: object
+            properties:
+                cae:
+                    type: string
+                fecha_vencimiento_cae:
+                    type: string
+                fecha_comprobante:
+                    type: string
+                tipo_comprobante:
+                    type: integer
+                punto_venta:
+                    type: integer
+                numero_comprobante:
+                    type: integer
+                    format: int64
+                concepto:
+                    type: integer
+                tipo_documento:
+                    type: integer
+                numero_documento:
+                    type: integer
+                    format: int64
+                moneda_id:
+                    type: string
+                cotizacion:
+                    type: number
+                    format: double
+                importe_total:
+                    type: number
+                    format: double
+                importe_no_gravado:
+                    type: number
+                    format: double
+                importe_neto:
+                    type: number
+                    format: double
+                importe_exento:
+                    type: number
+                    format: double
+                importe_tributos:
+                    type: number
+                    format: double
+                importe_iva:
+                    type: number
+                    format: double
+                fecha_vencimiento_pago:
+                    type: string
+                    nullable: true
+                fecha_servicio_desde:
+                    type: string
+                    nullable: true
+                fecha_servicio_hasta:
+                    type: string
+                    nullable: true
+                alicuotas_iva:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/IVAComprobante"
+                periodo:
+                    $ref: "#/components/schemas/PeriodoComprobante"
+                tributos:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TributoComprobante"
+                comprobantes_asociados:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ComprobanteAsociado"
+                opcionales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/OpcionalComprobante"
+                compradores:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CompradorComprobante"
+                actividades:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ActividadComprobante"
+        ComprobanteConsultado:
+            type: object
+            properties:
+                punto_venta:
+                    type: integer
+                resultado:
+                    type: string
+                tipo_emision:
+                    type: string
+                codigo_autorizacion:
+                    type: string
+                tipo_documento:
+                    type: integer
+                numero_documento:
+                    type: integer
+                    format: int64
+                concepto:
+                    type: integer
+                tipo_comprobante:
+                    type: integer
+                comprobante_desde:
+                    type: integer
+                    format: int64
+                comprobante_hasta:
+                    type: integer
+                    format: int64
+                fecha_comprobante:
+                    type: string
+                importe_total:
+                    type: number
+                    format: double
+                importe_no_gravado:
+                    type: number
+                    format: double
+                importe_neto:
+                    type: number
+                    format: double
+                importe_exento:
+                    type: number
+                    format: double
+                importe_tributos:
+                    type: number
+                    format: double
+                importe_iva:
+                    type: number
+                    format: double
+                fecha_vencimiento:
+                    type: string
+                fecha_proceso:
+                    type: string
+                fecha_vencimiento_pago:
+                    type: string
+                fecha_servicio_desde:
+                    type: string
+                fecha_servicio_hasta:
+                    type: string
+                moneda_id:
+                    type: string
+                cotizacion:
+                    type: number
+                    format: double
+                cancela_misma_moneda:
+                    type: string
+                id_condicion_iva_receptor:
+                    type: integer
+                alicuotas_iva:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/IVAComprobante"
+                tributos:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TributoComprobante"
+                comprobantes_asociados:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ComprobanteAsociado"
+                opcionales:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/OpcionalComprobante"
+                compradores:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CompradorComprobante"
+                actividades:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ActividadComprobante"
+                periodo_asociado:
+                    $ref: "#/components/schemas/PeriodoComprobante"
+                observaciones:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ObservacionComprobante"
+
+        RespuestaPersonaPadron:
+            type: object
+            properties:
+                persona_p4:
+                    $ref: "#/components/schemas/PersonaP4"
+                persona_p5:
+                    $ref: "#/components/schemas/PersonaP5"
+                persona_p10:
+                    $ref: "#/components/schemas/PersonaP10"
+                persona_p13:
+                    $ref: "#/components/schemas/PersonaP13"
+        PersonaP4:
+            type: object
+            properties:
+                actividad:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ActividadPadron"
+                apellido:
+                    type: string
+                cantidad_socios_empresa_mono:
+                    type: integer
+                categoria:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Categoria"
+                clave_inactiva_asociada:
+                    type: array
+                    items:
+                        type: integer
+                        format: int64
+                dependencia:
+                    $ref: "#/components/schemas/Dependencia"
+                domicilio:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Domicilio"
+                email:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/EmailPadron"
+                estado_clave:
+                    type: string
+                fecha_contrato_social:
+                    type: string
+                    format: date-time
+                fecha_fallecimiento:
+                    type: string
+                    format: date-time
+                fecha_inscripcion:
+                    type: string
+                    format: date-time
+                fecha_jubilado:
+                    type: string
+                    format: date-time
+                fecha_nacimiento:
+                    type: string
+                    format: date-time
+                fecha_vencimiento_migracion:
+                    type: string
+                    format: date-time
+                forma_juridica:
+                    type: string
+                id_persona:
+                    type: integer
+                    format: int64
+                impuesto:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ImpuestoDetallado"
+                ley_jubilacion:
+                    type: integer
+                localidad_inscripcion:
+                    type: string
+                mes_cierre:
+                    type: integer
+                nombre:
+                    type: string
+                numero_documento:
+                    type: string
+                numero_inscripcion:
+                    type: integer
+                    format: int64
+                organismo_inscripcion:
+                    type: string
+                organismo_originante:
+                    type: string
+                porcentaje_capital_nacional:
+                    type: number
+                    format: double
+                provincia_inscripcion:
+                    type: string
+                razon_social:
+                    type: string
+                regimen:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/RegimenExtendido"
+                relacion:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Relacion"
+                sexo:
+                    type: string
+                telefono:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Telefono"
+                tipo_clave:
+                    type: string
+                tipo_documento:
+                    type: string
+                tipo_organismo_originante:
+                    type: string
+                tipo_persona:
+                    type: string
+                tipo_residencia:
+                    type: string
+        PersonaP5:
+            type: object
+            properties:
+                datos_generales:
+                    $ref: "#/components/schemas/DatosGenerales"
+                datos_monotributo:
+                    $ref: "#/components/schemas/DatosMonotributo"
+                datos_regimen_general:
+                    $ref: "#/components/schemas/DatosRegimenGeneral"
+                error_constancia:
+                    $ref: "#/components/schemas/ErrorConstancia"
+                error_monotributo:
+                    $ref: "#/components/schemas/ErrorMonotributo"
+                error_regimen_general:
+                    $ref: "#/components/schemas/ErrorRegimenGeneral"
+        PersonaP10:
+            type: object
+            properties:
+                apellido:
+                    type: string
+                clave_inactiva_asociada:
+                    type: array
+                    items:
+                        type: integer
+                        format: int64
+                dependencia:
+                    $ref: "#/components/schemas/Dependencia"
+                descripcion_actividad_principal:
+                    type: string
+                domicilio:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Domicilio"
+                estado_clave:
+                    type: string
+                id_actividad_principal:
+                    type: integer
+                    format: int64
+                id_persona:
+                    type: integer
+                    format: int64
+                nombre:
+                    type: string
+                numero_documento:
+                    type: string
+                razon_social:
+                    type: string
+                tipo_clave:
+                    type: string
+                tipo_documento:
+                    type: string
+                tipo_persona:
+                    type: string
+        PersonaP13:
+            type: object
+            properties:
+                apellido:
+                    type: string
+                clave_inactiva_asociada:
+                    type: array
+                    items:
+                        type: integer
+                        format: int64
+                descripcion_actividad_principal:
+                    type: string
+                domicilio:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/DomicilioExtendido"
+                estado_clave:
+                    type: string
+                fecha_contrato_social:
+                    type: string
+                    format: date-time
+                fecha_fallecimiento:
+                    type: string
+                    format: date-time
+                fecha_nacimiento:
+                    type: string
+                    format: date-time
+                forma_juridica:
+                    type: string
+                id_actividad_principal:
+                    type: integer
+                    format: int64
+                id_persona:
+                    type: integer
+                    format: int64
+                mes_cierre:
+                    type: integer
+                nombre:
+                    type: string
+                numero_documento:
+                    type: string
+                periodo_actividad_principal:
+                    type: integer
+                razon_social:
+                    type: string
+                tipo_clave:
+                    type: string
+                tipo_documento:
+                    type: string
+                tipo_persona:
+                    type: string
+        DatosGenerales:
+            type: object
+            properties:
+                apellido:
+                    type: string
+                caracterizacion:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Caracterizacion"
+                dependencia:
+                    $ref: "#/components/schemas/DependenciaDetallada"
+                domicilio_fiscal:
+                    $ref: "#/components/schemas/Domicilio"
+                es_sucesion:
+                    type: string
+                estado_clave:
+                    type: string
+                fecha_contrato_social:
+                    type: string
+                    format: date-time
+                fecha_fallecimiento:
+                    type: string
+                    format: date-time
+                id_persona:
+                    type: integer
+                    format: int64
+                mes_cierre:
+                    type: integer
+                nombre:
+                    type: string
+                razon_social:
+                    type: string
+                tipo_clave:
+                    type: string
+                tipo_persona:
+                    type: string
+        DatosMonotributo:
+            type: object
+            properties:
+                actividad:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ActividadPadron"
+                actividad_monotributista:
+                    $ref: "#/components/schemas/ActividadPadron"
+                categoria_monotributo:
+                    $ref: "#/components/schemas/CategoriaFiscal"
+                componente_de_sociedad:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/RelacionFiscal"
+                impuesto:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Impuesto"
+        DatosRegimenGeneral:
+            type: object
+            properties:
+                actividad:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ActividadPadron"
+                categoria_autonomo:
+                    $ref: "#/components/schemas/CategoriaFiscal"
+                impuesto:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Impuesto"
+                regimen:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/Regimen"
+        ErrorConstancia:
+            type: object
+            properties:
+                apellido:
+                    type: string
+                error:
+                    type: array
+                    items:
+                        type: string
+                id_persona:
+                    type: integer
+                    format: int64
+                nombre:
+                    type: string
+        ErrorMonotributo:
+            type: object
+            properties:
+                error:
+                    type: array
+                    items:
+                        type: string
+                mensaje:
+                    type: string
+        ErrorRegimenGeneral:
+            type: object
+            properties:
+                error:
+                    type: array
+                    items:
+                        type: string
+                mensaje:
+                    type: string
+        Caracterizacion:
+            type: object
+            properties:
+                descripcion_caracterizacion:
+                    type: string
+                id_caracterizacion:
+                    type: integer
+                periodo:
+                    type: integer
+        Telefono:
+            type: object
+            properties:
+                numero:
+                    type: integer
+                    format: int64
+                tipo_linea:
+                    type: string
+                tipo_telefono:
+                    type: string
+        Impuesto:
+            type: object
+            properties:
+                descripcion_impuesto:
+                    type: string
+                estado_impuesto:
+                    type: string
+                id_impuesto:
+                    type: integer
+                motivo:
+                    type: string
+                periodo:
+                    type: integer
+        ImpuestoDetallado:
+            type: object
+            properties:
+                descripcion_impuesto:
+                    type: string
+                dia_periodo:
+                    type: integer
+                estado:
+                    type: string
+                ff_inscripcion:
+                    type: string
+                    format: date-time
+                id_impuesto:
+                    type: integer
+                periodo:
+                    type: integer
+        Regimen:
+            type: object
+            properties:
+                descripcion_regimen:
+                    type: string
+                id_impuesto:
+                    type: integer
+                id_regimen:
+                    type: integer
+                periodo:
+                    type: integer
+                tipo_regimen:
+                    type: string
+        RegimenExtendido:
+            type: object
+            properties:
+                descripcion_regimen:
+                    type: string
+                dia_periodo:
+                    type: integer
+                estado:
+                    type: string
+                id_impuesto:
+                    type: integer
+                id_regimen:
+                    type: integer
+                periodo:
+                    type: integer
+                tipo_regimen:
+                    type: string
+        RelacionFiscal:
+            type: object
+            properties:
+                apellido_persona_asociada:
+                    type: string
+                ff_relacion:
+                    type: string
+                    format: date-time
+                ff_vencimiento:
+                    type: string
+                    format: date-time
+                id_persona_asociada:
+                    type: integer
+                    format: int64
+                nombre_persona_asociada:
+                    type: string
+                razon_social_persona_asociada:
+                    type: string
+                tipo_componente:
+                    type: string
+        Relacion:
+            type: object
+            properties:
+                ff_relacion:
+                    type: string
+                    format: date-time
+                ff_vencimiento:
+                    type: string
+                    format: date-time
+                id_persona:
+                    type: integer
+                    format: int64
+                id_persona_asociada:
+                    type: integer
+                    format: int64
+                subtipo_relacion:
+                    type: string
+                tipo_relacion:
+                    type: string
+        CategoriaFiscal:
+            type: object
+            properties:
+                descripcion_categoria:
+                    type: string
+                id_categoria:
+                    type: integer
+                id_impuesto:
+                    type: integer
+                periodo:
+                    type: integer
+        Categoria:
+            type: object
+            properties:
+                descripcion_categoria:
+                    type: string
+                estado:
+                    type: string
+                id_categoria:
+                    type: integer
+                id_impuesto:
+                    type: integer
+                periodo:
+                    type: integer
+        EmailPadron:
+            type: object
+            properties:
+                direccion:
+                    type: string
+                estado:
+                    type: string
+                tipo_email:
+                    type: string
+        ActividadPadron:
+            type: object
+            properties:
+                descripcion_actividad:
+                    type: string
+                id_actividad:
+                    type: integer
+                    format: int64
+                nomenclador:
+                    type: integer
+                orden:
+                    type: integer
+                periodo:
+                    type: integer
+        Dependencia:
+            type: object
+            properties:
+                descripcion_dependencia:
+                    type: string
+                id_dependencia:
+                    type: integer
+        DependenciaDetallada:
+            type: object
+            properties:
+                cod_postal:
+                    type: string
+                descripcion_dependencia:
+                    type: string
+                descripcion_provincia:
+                    type: string
+                direccion:
+                    type: string
+                id_dependencia:
+                    type: integer
+                id_provincia:
+                    type: integer
+                localidad:
+                    type: string
+        Domicilio:
+            type: object
+            properties:
+                cod_postal:
+                    type: string
+                dato_adicional:
+                    type: string
+                descripcion_provincia:
+                    type: string
+                direccion:
+                    type: string
+                id_provincia:
+                    type: integer
+                localidad:
+                    type: string
+                tipo_dato_adicional:
+                    type: string
+                tipo_domicilio:
+                    type: string
+        DomicilioExtendido:
+            type: object
+            properties:
+                calle:
+                    type: string
+                codigo_postal:
+                    type: string
+                dato_adicional:
+                    type: string
+                descripcion_provincia:
+                    type: string
+                direccion:
+                    type: string
+                estado_domicilio:
+                    type: string
+                id_provincia:
+                    type: integer
+                localidad:
+                    type: string
+                manzana:
+                    type: string
+                numero:
+                    type: integer
+                oficina_dpto_local:
+                    type: string
+                piso:
+                    type: string
+                sector:
+                    type: string
+                tipo_dato_adicional:
+                    type: string
+                tipo_domicilio:
+                    type: string
+                torre:
+                    type: string
