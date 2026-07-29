@@ -13,8 +13,7 @@ import (
 
 func main() {
 	cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
-		ClaveAPI:     os.Getenv("GOFIP_API_KEY"),
-		AmbienteARCA: gofip.AmbienteHomologacion,
+		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
 	})
 	if err != nil {
 		log.Fatal(err)
