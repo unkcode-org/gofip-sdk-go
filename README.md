@@ -173,6 +173,7 @@ Hay ejemplos completos en [`examples/`](examples/):
 - [`padron`](examples/padron/main.go)
 - [`emitir-factura`](examples/emitir-factura/main.go)
 - [`generar-comprobante`](examples/generar-comprobante/main.go)
+- [`generar-pdf-factura`](examples/generar-pdf-factura/main.go)
 - [`generar-recibo`](examples/generar-recibo/main.go)
 
 Podés ejecutarlos desde la raíz del repositorio:

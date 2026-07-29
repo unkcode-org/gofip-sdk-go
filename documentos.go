@@ -121,6 +121,20 @@ func (s *ServicioDocumentos) GenerarPDFFactura(
 	return &respuesta, nil
 }
 
+func (s *ServicioDocumentos) GenerarYGuardarPDFFactura(
+	ctx context.Context,
+	documentoID string,
+	solicitud documentos.SolicitudGenerarPDFFactura,
+	ruta string,
+	opciones OpcionesGuardado,
+) error {
+	respuesta, err := s.GenerarPDFFactura(ctx, documentoID, solicitud)
+	if err != nil {
+		return err
+	}
+	return s.DescargarYGuardarPDFFactura(ctx, respuesta.PDFURL, ruta, opciones)
+}
+
 func (s *ServicioDocumentos) DescargarPDFFactura(
 	ctx context.Context,
 	urlFirmada string,

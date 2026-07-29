@@ -127,6 +127,78 @@ func TestGenerarComprobanteDevuelveBinarioYMetadatos(t *testing.T) {
 	}
 }
 
+func TestGenerarYGuardarPDFFacturaGeneraDescargaYGuarda(t *testing.T) {
+	var servidor *httptest.Server
+	solicitudes := 0
+	servidor = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		solicitudes++
+		switch solicitudes {
+		case 1:
+			if r.Method != http.MethodPost {
+				t.Fatalf("método de generación inesperado: %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/factura/doc-factura/pdf" {
+				t.Fatalf("ruta de generación inesperada: %s", r.URL.Path)
+			}
+
+			var cuerpo map[string]json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&cuerpo); err != nil {
+				t.Fatalf("decodificar cuerpo: %v", err)
+			}
+			if cuerpo["data"] == nil {
+				t.Fatal("falta wrapper data")
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{
+				"documento_id":"doc-factura",
+				"pdf_url":"`+servidor.URL+`/factura.pdf",
+				"pdf_content_type":"application/pdf"
+			}`)
+		case 2:
+			if r.Method != http.MethodGet {
+				t.Fatalf("método de descarga inesperado: %s", r.Method)
+			}
+			if r.URL.Path != "/factura.pdf" {
+				t.Fatalf("ruta de descarga inesperada: %s", r.URL.Path)
+			}
+			if got := r.Header.Get("Authorization"); got != "" {
+				t.Errorf("la descarga firmada filtró Authorization: %q", got)
+			}
+
+			w.Header().Set("Content-Type", "application/pdf")
+			_, _ = w.Write([]byte("%PDF-factura"))
+		default:
+			t.Fatalf("solicitud inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer servidor.Close()
+
+	cliente := nuevoClientePrueba(t, servidor.URL, servidor.Client())
+	ruta := filepath.Join(t.TempDir(), "documentos", "factura.pdf")
+	err := cliente.Documentos.GenerarYGuardarPDFFactura(
+		context.Background(),
+		"doc-factura",
+		documentos.SolicitudGenerarPDFFactura{},
+		ruta,
+		OpcionesGuardado{},
+	)
+	if err != nil {
+		t.Fatalf("GenerarYGuardarPDFFactura: %v", err)
+	}
+	if solicitudes != 2 {
+		t.Fatalf("cantidad de solicitudes inesperada: %d", solicitudes)
+	}
+
+	contenido, err := os.ReadFile(ruta)
+	if err != nil {
+		t.Fatalf("leer archivo guardado: %v", err)
+	}
+	if string(contenido) != "%PDF-factura" {
+		t.Fatalf("contenido guardado inesperado: %q", contenido)
+	}
+}
+
 func TestDescargaFirmadaNoFiltraCredenciales(t *testing.T) {
 	servidorArchivos := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "" {

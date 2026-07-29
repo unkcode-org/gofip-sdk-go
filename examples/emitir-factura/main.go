@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -29,20 +30,27 @@ func main() {
 				Detalles: []facturacion.ItemComprobante{{
 					ID:             "SERV-001",
 					Descripcion:    "Servicio profesional",
-					PrecioUnitario: 12500.50,
+					PrecioUnitario: 1200.50,
 					Cantidad:       1,
 					AlicuotasIVA:   facturacion.AlicuotaCero,
-					Subtotal:       12500.50,
+					Subtotal:       1200.50,
 				}},
 			},
 		},
 		gofip.OpcionesEmisionFactura{
-			ClaveIdempotencia: "factura-pedido-123",
-			ReferenciaExterna: "pedido-123",
+			ClaveIdempotencia: "factura-pedido-124",
+			ReferenciaExterna: "pedido-124",
 		},
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	json, err := json.Marshal(respuesta)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%s\n", string(json))
 	fmt.Printf("%+v\n", respuesta)
 }

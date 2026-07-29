@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const URLBasePredeterminada = "https://arca.unkcode.com"
+const URLBasePredeterminada = "https://arca.apps.staging.unkcode.com"
 
 type AmbienteARCA string
 
