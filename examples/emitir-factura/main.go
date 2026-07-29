@@ -13,7 +13,8 @@ import (
 
 func main() {
 	cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
-		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
+		ClaveAPI:     os.Getenv("GOFIP_API_KEY"),
+		AmbienteARCA: gofip.AmbienteHomologacion,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -38,8 +39,8 @@ func main() {
 			},
 		},
 		gofip.OpcionesEmisionFactura{
-			ClaveIdempotencia: "factura-pedido-124",
-			ReferenciaExterna: "pedido-124",
+			ClaveIdempotencia: "factura-pedido-125",
+			ReferenciaExterna: "pedido-125",
 		},
 	)
 	if err != nil {
