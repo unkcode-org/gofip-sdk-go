@@ -19,13 +19,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	nombreCliente := "LERVU S.A."
+
 	err = cliente.Documentos.GenerarYGuardarPDFFactura(
 		context.Background(),
 		os.Getenv("GOFIP_DOCUMENTO_ID"),
 		documentos.SolicitudGenerarPDFFactura{
 			Metadatos: facturacion.MetadatosComprobante{
-				CondicionFiscalCliente: facturacion.CondicionConsumidorFinal,
-				MetodoPago:             catalogos.MedioPagoEfectivo,
+				CondicionFiscalCliente:    facturacion.CondicionConsumidorFinal,
+				MetodoPago:                catalogos.MedioPagoEfectivo,
+				NombreORazonSocialCliente: &nombreCliente,
 			},
 		},
 		"documentos/factura.pdf",

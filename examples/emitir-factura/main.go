@@ -25,21 +25,21 @@ func main() {
 			Factura: facturacion.Comprobante{
 				TipoComprobante: facturacion.ComprobanteFacturaC,
 				Concepto:        facturacion.ConceptoProductos,
-				TipoDocumento:   facturacion.DocumentoConsumidorFinal,
-				CondicionFiscal: facturacion.CondicionConsumidorFinal,
+				TipoDocumento:   facturacion.DocumentoCUIT,
+				NumeroDocumento: 30710785607,
 				Detalles: []facturacion.ItemComprobante{{
-					ID:             "SERV-001",
-					Descripcion:    "Servicio profesional",
-					PrecioUnitario: 1200.50,
+					ID:             "SERV-222",
+					Descripcion:    "Diseño y desarrollo de sitio web",
+					PrecioUnitario: 200000,
 					Cantidad:       1,
 					AlicuotasIVA:   facturacion.AlicuotaCero,
-					Subtotal:       1200.50,
+					Subtotal:       200000,
 				}},
 			},
 		},
 		gofip.OpcionesEmisionFactura{
-			ClaveIdempotencia: "factura-pedido-125",
-			ReferenciaExterna: "pedido-125",
+			ClaveIdempotencia: "factura-lervu-001",
+			ReferenciaExterna: "lervu-001",
 		},
 	)
 	if err != nil {

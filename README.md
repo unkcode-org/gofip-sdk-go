@@ -67,6 +67,52 @@ Opciones disponibles:
 | `AmbienteARCA` | `AmbienteProduccion` o `AmbienteHomologacion`. | `AmbienteProduccion` |
 | `ClienteHTTP` | `*http.Client` personalizado. | Timeout de 90 segundos |
 
+### Cliente HTTP instrumentado
+
+Podés pasar un `http.Client` propio mediante `ClienteHTTP`. El SDK lo utiliza
+para todas las solicitudes, incluidas las descargas de documentos por URL
+firmada, por lo que tus middlewares de logs, métricas u OpenTelemetry observan
+el tráfico completo. Al proporcionar un cliente personalizado, configurá en él
+el timeout, transporte y demás políticas: el timeout predeterminado de 90
+segundos solo se aplica cuando `ClienteHTTP` es `nil`.
+
+El siguiente ejemplo envuelve el transporte para registrar la duración de cada
+solicitud. Podés reemplazarlo por cualquier transporte instrumentado, como el
+que ofrece `otelhttp`:
+
+```go
+type transporteConMetricas struct {
+    siguiente http.RoundTripper
+}
+
+func (t transporteConMetricas) RoundTrip(solicitud *http.Request) (*http.Response, error) {
+    inicio := time.Now()
+    transporte := t.siguiente
+    if transporte == nil {
+        transporte = http.DefaultTransport
+    }
+
+    respuesta, err := transporte.RoundTrip(solicitud)
+    log.Printf("gofip: %s %s en %s: %v", solicitud.Method, solicitud.URL, time.Since(inicio), err)
+    return respuesta, err
+}
+
+clienteHTTP := &http.Client{
+    Timeout: 30 * time.Second,
+    Transport: transporteConMetricas{
+        siguiente: http.DefaultTransport,
+    },
+}
+
+cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
+    ClaveAPI:    os.Getenv("GOFIP_API_KEY"),
+    ClienteHTTP: clienteHTTP,
+})
+if err != nil {
+    log.Fatal(err)
+}
+```
+
 Para evitar exponer credenciales, usá variables de entorno y no incluyas la
 API key en el código fuente:
 
