@@ -1,5 +1,7 @@
 // Package gofip implementa un cliente idiomático para la API v2 de GOFIP.
 //
-// El cliente cubre las operaciones autenticadas mediante API key para
-// utilidades, catálogos ARCA, padrón, facturación y documentos.
+// NuevoCliente usa Bearer para emisión, consultas ARCA, documentos y consultas
+// persistidas por CAE/documento ID. Estas últimas leen MySQL a nivel de emisor.
+// NuevoClienteSEP usa IntegrationKey exclusivamente para las operaciones M2M
+// de creación y recuperación de acceso Embedded; no implementa el navegador.
 package gofip

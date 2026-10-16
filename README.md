@@ -10,13 +10,13 @@ de errores HTTP y la descarga de documentos.
 | Componente | Versión usada |
 | --- | --- |
 | Módulo Go | `v2` (`github.com/unkcode-org/gofip-sdk-go/v2`) |
-| API GOFIP | `2.0` y rutas bajo `/api/v2` |
+| API GOFIP | `2.18.0` y rutas bajo `/api/v2` |
 | Especificación OpenAPI | `3.0.3` |
 | Go | `1.22.2` o posterior |
 
 El contrato HTTP de referencia está en
 [`docs/openapi.yaml`](docs/openapi.yaml). Los campos `openapi: 3.0.3` e
-`info.version: "2.0"` indican, respectivamente, la versión del formato OpenAPI
+`info.version: "2.18.0"` indican, respectivamente, la versión del formato OpenAPI
 y la versión del contrato de la API. No deben confundirse con una versión
 publicada del módulo Go.
 
@@ -54,7 +54,7 @@ cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
     AmbienteARCA: gofip.AmbienteProduccion,
 })
 if err != nil {
-    log.Fatal(err)
+    log.Fatal("no se pudo completar la operación GOFIP")
 }
 ```
 
@@ -63,7 +63,7 @@ Opciones disponibles:
 | Opción | Descripción | Valor predeterminado |
 | --- | --- | --- |
 | `ClaveAPI` | API key de GOFIP. Es obligatoria. | — |
-| `URLBase` | URL absoluta del servicio. | `https://arca.unkcode.com` |
+| `URLBase` | URL absoluta del servicio. | `https://arca.apps.staging.unkcode.com` |
 | `AmbienteARCA` | `AmbienteProduccion` o `AmbienteHomologacion`. | `AmbienteProduccion` |
 | `ClienteHTTP` | `*http.Client` personalizado. | Timeout de 90 segundos |
 
@@ -93,7 +93,7 @@ func (t transporteConMetricas) RoundTrip(solicitud *http.Request) (*http.Respons
     }
 
     respuesta, err := transporte.RoundTrip(solicitud)
-    log.Printf("gofip: %s %s en %s: %v", solicitud.Method, solicitud.URL, time.Since(inicio), err)
+    log.Printf("gofip: método=%s duración=%s error=%t", solicitud.Method, time.Since(inicio), err != nil)
     return respuesta, err
 }
 
@@ -109,7 +109,7 @@ cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
     ClienteHTTP: clienteHTTP,
 })
 if err != nil {
-    log.Fatal(err)
+    log.Fatal("no se pudo completar la operación GOFIP")
 }
 ```
 
@@ -140,7 +140,7 @@ func main() {
         ClaveAPI: os.Getenv("GOFIP_API_KEY"),
     })
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("no se pudo completar la operación GOFIP")
     }
 
     ctx, cancelar := context.WithTimeout(context.Background(), 15*time.Second)
@@ -148,7 +148,7 @@ func main() {
 
     monedas, err := cliente.Catalogos.ListarMonedas(ctx)
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("no se pudo completar la operación GOFIP")
     }
 
     fmt.Printf("%+v\n", monedas.Monedas)
@@ -203,7 +203,7 @@ respuesta, err := cliente.Facturacion.EmitirFactura(
     },
 )
 if err != nil {
-    log.Fatal(err)
+    log.Fatal("no se pudo completar la operación GOFIP")
 }
 ```
 
@@ -248,9 +248,9 @@ case errors.As(err, &errorAPI):
         errorAPI.IDSolicitud,
     )
 case errors.As(err, &errorHTTP):
-    log.Printf("respuesta HTTP %d: %s", errorHTTP.Estado, errorHTTP.Cuerpo)
+    log.Printf("respuesta HTTP %d", errorHTTP.Estado)
 case err != nil:
-    log.Printf("error de transporte: %v", err)
+    log.Printf("error de transporte")
 }
 ```
 
@@ -293,3 +293,121 @@ indicadas al comienzo de este README.
 
 Este proyecto se distribuye bajo la
 [Apache License 2.0](LICENSE).
+
+## Facturas persistidas: CAE y documento ID
+
+Estas operaciones usan la API key Bearer y leen exclusivamente MySQL. Una clave
+puede consultar las facturas de **todos los puntos de venta de su mismo emisor**,
+sin ampliar el alcance de emisión. El emisor se resuelve en GOFIP; el SDK no lo
+recibe como parámetro. Ambas consultas devuelven `facturacion.RespuestaFacturaPersistida`.
+
+```go
+factura, err := cliente.Facturacion.ObtenerFacturaPorCAE(ctx, cae)
+// O utilizar el identificador estable DocumentoID devuelto al emitir:
+factura, err = cliente.Facturacion.ObtenerFacturaPorId(ctx, documentoID)
+```
+
+Un CAE inexistente o inaccesible produce `*gofip.ErrorAPI` con estado 404.
+Un CAE ambiguo dentro del emisor produce 409, código `13006`. Se desambigua sin
+seleccionar una factura arbitraria:
+
+```go
+puntoVenta := 4
+tipo := facturacion.ComprobanteFacturaA
+numero := int64(125)
+factura, err := cliente.Facturacion.ObtenerFacturaPorCAEConOpciones(
+    ctx, cae, gofip.OpcionesConsultaFacturaPorCAE{
+        PuntoVenta: &puntoVenta, TipoComprobante: &tipo,
+        NumeroComprobante: &numero,
+        // DocumentoID también puede restringir la búsqueda.
+    },
+)
+```
+
+`ObtenerComprobante(ctx, puntoVenta, tipo, numero)` conserva la consulta directa
+a ARCA. `ObtenerFacturaPorCAE` y `ObtenerFacturaPorId` nunca usan ARCA como fallback.
+El ID es el del documento GOFIP, no el de la fila interna `factura_id`.
+
+La respuesta contiene sólo datos persistidos. No reconstruye datos históricos del
+receptor desde la ficha mutable ni recupera SKU originales. Las fechas fiscales
+son strings; los timestamps son `time.Time`. `pdf.disponible` refleja metadata y
+no comprueba la existencia del objeto remoto ni genera una URL firmada.
+
+**Ambiente:** GOFIP no persiste el ambiente en Documento/Factura. Estas consultas
+no envían `X-ARCA-Ambiente` y no filtran por homologación/producción. Los registros
+exclusivos de Legacy requieren una migración de datos independiente.
+
+## Integraciones SEP: un cliente y una credencial distintos
+
+```go
+import sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
+
+clienteSEP, err := gofip.NuevoClienteSEP(gofip.OpcionesClienteSEP{
+    ClaveIntegracion: os.Getenv("GOFIP_SEP_KEY"),
+    URLBase: os.Getenv("GOFIP_API_URL"), // obligatoria, sin valor por defecto
+    ClienteHTTP: &http.Client{Timeout: 15 * time.Second},
+})
+if err != nil { return err }
+solicitud := sepmodel.SolicitudCrearSesionEmbedded{
+    IDEmisorExterno: "elixir",
+    Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer},
+}
+sesion, err := clienteSEP.CrearSesion(ctx, solicitud)
+// Ante una recuperación, solicitar un bootstrap nuevo:
+bootstrap, err := clienteSEP.CrearBootstrap(ctx, solicitud)
+```
+
+| Credencial | Cliente | Uso |
+| --- | --- | --- |
+| `GOFIP_API_KEY` | `NuevoCliente` | Bearer; emisión, ARCA, facturas persistidas y documentos |
+| `GOFIP_SEP_KEY` | `NuevoClienteSEP` | IntegrationKey; iniciar y recuperar acceso Embedded |
+
+SEP envía exclusivamente `Authorization: IntegrationKey ...`, sin ambiente ARCA.
+Crea requests `data` y decodifica responses `data`. Los permisos se validan contra
+los doce valores de OpenAPI: no admite listas vacías, valores desconocidos ni
+duplicados. Sólo el backend decide si caben dentro del techo autorizado.
+`invoices:create` es un valor del enum y no agrega un endpoint de emisión Embedded.
+
+`CrearSesion` devuelve URL de documento, vencimientos y bootstrap. Todavía no es
+una sesión de navegador. `CrearBootstrap` emite un bootstrap nuevo de recuperación;
+no recupera un secreto anterior ni crea otro documento. El canje, iframe,
+postMessage, Origin/CSRF y almacenamiento del navegador pertenecen al frontend.
+
+Los tokens y `URLDocumento` usan `sepmodel.Secreto`. `fmt`, `slog` y JSON los
+redactan. Para entregar una capacidad deliberadamente al frontend, usá
+`sesion.Datos.TokenBootstrap.Valor()` y `sesion.Datos.URLDocumento.Valor()` en un DTO
+propio, dentro de un canal autorizado y sin logs/cache. Serializar directamente la
+respuesta del SDK **entrega valores redactados**. No registrar structs completos,
+headers, cuerpos o URLs de diagnóstico desde instrumentación HTTP personalizada.
+La IntegrationKey permanece exclusivamente en el backend del integrador.
+
+SEP bloquea redirecciones, no usa cookies y no reintenta automáticamente los POST.
+Aplica estas políticas sobre una copia de `http.Client`; conserva el transporte y
+el timeout recibidos y no modifica el cliente original. Sin cliente personalizado,
+el timeout es 90 segundos. Los errores remotos se sanitizan conservando los tipos
+`ErrorAPI`/`ErrorHTTP`, el estado y códigos numéricos seguros. Los errores de un
+transporte personalizado no se exponen crudos; cancelaciones y deadlines conservan
+`errors.Is(err, context.Canceled/DeadlineExceeded)`.
+
+## Límites de idempotencia
+
+La semántica de emisión no cambia: usá la misma credencial, clave estable y factura
+para reintentar la misma operación comercial. Sin clave explícita no hay deduplicación
+comercial estable. La referencia externa no es única; cambiar de credencial cambia
+el ámbito de deduplicación. El hash del backend cubre el comprobante, no ambiente,
+metadatos, papel ni referencia externa. Un intento pendiente/error puede devolver
+conflicto. No reenviar con una clave nueva tras un resultado fiscal incierto.
+La consulta por CAE no reconcilia autorizaciones que no llegaron a persistirse.
+
+## Verificación y publicación
+
+```bash
+go test ./...
+go vet ./...
+go test -race ./...
+```
+
+Ver [arquitectura](docs/arquitectura.md) y [validación manual](docs/validacion.md).
+El contrato de referencia es OpenAPI 2.18.0 del backend. No se publica una versión
+como parte de estas pruebas. La secuencia prevista es `v2.0.0-rc.1` → `v2.0.0`,
+con imports `/v2`, validación externa y aprobación de publicación.
