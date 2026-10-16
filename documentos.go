@@ -68,7 +68,9 @@ func (s *ServicioDocumentos) GenerarRecibo(
 	var respuesta documentos.RespuestaDocumentoNoFiscal
 	ruta := "/api/v2/templates-oficiales/" + url.PathEscape(documentos.SlugRecibo) + "/documentos"
 	cabeceras := map[string]string{"Idempotency-Key": opciones.ClaveIdempotencia}
-	cuerpo := documentos.SolicitudGenerarRecibo{Datos: datos}
+	cuerpo := cuerpoDatos[documentos.SolicitudGenerarRecibo]{
+		Datos: documentos.SolicitudGenerarRecibo{Datos: datos},
+	}
 	if err := s.transporte.json(ctx, http.MethodPost, ruta, cuerpo, cabeceras, false, &respuesta); err != nil {
 		return nil, err
 	}
