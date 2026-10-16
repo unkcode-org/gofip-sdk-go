@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	gofip "github.com/unkcode-org/gofip-sdk-go/v2"
 	"github.com/unkcode-org/gofip-sdk-go/v2/modelos/facturacion"
@@ -13,20 +13,29 @@ import (
 
 func main() {
 	cliente, err := gofip.NuevoCliente(gofip.OpcionesCliente{
-		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
+		ClaveAPI:     os.Getenv("GOFIP_API_KEY"),
+		URLBase:      os.Getenv("GOFIP_API_URL"),
+		AmbienteARCA: gofip.AmbienteHomologacion,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación GOFIP")
 	}
 
+	clave := os.Getenv("GOFIP_IDEMPOTENCY_KEY")
+	if clave == "" {
+		log.Fatal("falta GOFIP_IDEMPOTENCY_KEY estable por venta")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	respuesta, err := cliente.Facturacion.EmitirFactura(
-		context.Background(),
+		ctx,
 		facturacion.SolicitudEmitirFactura{
 			Factura: facturacion.Comprobante{
 				TipoComprobante: facturacion.ComprobanteFacturaC,
 				Concepto:        facturacion.ConceptoProductos,
-				TipoDocumento:   facturacion.DocumentoCUIT,
-				NumeroDocumento: 30710785607,
+				TipoDocumento:   facturacion.DocumentoConsumidorFinal,
+				CondicionFiscal: facturacion.CondicionConsumidorFinal,
+				NumeroDocumento: 0,
 				Detalles: []facturacion.ItemComprobante{{
 					ID:             "SERV-222",
 					Descripcion:    "Diseño y desarrollo de sitio web",
@@ -38,19 +47,18 @@ func main() {
 			},
 		},
 		gofip.OpcionesEmisionFactura{
-			ClaveIdempotencia: "factura-lervu-001",
-			ReferenciaExterna: "lervu-001",
+			ClaveIdempotencia: clave,
+			ReferenciaExterna: os.Getenv("GOFIP_EXTERNAL_REFERENCE"),
 		},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación GOFIP")
 	}
 
-	json, err := json.Marshal(respuesta)
-	if err != nil {
-		log.Fatal(err)
+	if respuesta.DocumentoID != nil {
+		fmt.Println("Documento:", *respuesta.DocumentoID)
 	}
-
-	fmt.Printf("%s\n", string(json))
-	fmt.Printf("%+v\n", respuesta)
+	if respuesta.Factura.CAE != nil {
+		fmt.Println("CAE:", *respuesta.Factura.CAE)
+	}
 }

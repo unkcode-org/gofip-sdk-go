@@ -15,7 +15,7 @@ import (
 	"github.com/unkcode-org/gofip-sdk-go/v2/modelos/facturacion"
 )
 
-func TestGenerarReciboEnviaContratoEspecificoSinWrapperData(t *testing.T) {
+func TestGenerarReciboEnviaEnvoltorioDataDelContrato(t *testing.T) {
 	servidor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2/templates-oficiales/recibo/documentos" {
 			t.Fatalf("ruta inesperada: %s", r.URL.Path)
@@ -31,11 +31,18 @@ func TestGenerarReciboEnviaContratoEspecificoSinWrapperData(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&cuerpo); err != nil {
 			t.Fatalf("decodificar cuerpo: %v", err)
 		}
-		if len(cuerpo) != 1 || cuerpo["datos"] == nil || cuerpo["data"] != nil {
+		if len(cuerpo) != 1 || cuerpo["data"] == nil || cuerpo["datos"] != nil {
 			t.Fatalf("cuerpo exterior inesperado: %#v", cuerpo)
 		}
+		var sobre map[string]json.RawMessage
+		if err := json.Unmarshal(cuerpo["data"], &sobre); err != nil {
+			t.Fatal(err)
+		}
+		if len(sobre) != 1 || sobre["datos"] == nil {
+			t.Fatal("data debe contener únicamente datos")
+		}
 		var datos documentos.DatosRecibo
-		if err := json.Unmarshal(cuerpo["datos"], &datos); err != nil {
+		if err := json.Unmarshal(sobre["datos"], &datos); err != nil {
 			t.Fatalf("decodificar datos: %v", err)
 		}
 		if datos.Recibo.NumeroRecibo != "REC-000001" || len(datos.Items) != 1 {

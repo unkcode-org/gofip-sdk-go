@@ -1,0 +1,32 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	gofip "github.com/unkcode-org/gofip-sdk-go/v2"
+	sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+func main() {
+	c, err := gofip.NuevoClienteSEP(gofip.OpcionesClienteSEP{ClaveIntegracion: os.Getenv("GOFIP_SEP_KEY"), URLBase: os.Getenv("GOFIP_API_URL"), ClienteHTTP: &http.Client{Timeout: 15 * time.Second}})
+	if err != nil {
+		log.Fatal("configuración SEP inválida")
+	}
+	emisor := os.Getenv("GOFIP_SEP_EMISOR_EXTERNO")
+	if emisor == "" {
+		log.Fatal("falta GOFIP_SEP_EMISOR_EXTERNO")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	respuesta, err := c.CrearBootstrap(ctx, sepmodel.SolicitudCrearSesionEmbedded{IDEmisorExterno: emisor, Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}})
+	if err != nil {
+		log.Fatal("no se pudo completar la operación SEP")
+	}
+	// No imprimir respuesta ni capacidades. El integrador entrega Valor()
+	// deliberadamente a su frontend por un canal autorizado, sin cache ni logs.
+	fmt.Printf("Operación SEP completada; vencimiento: %s\n", respuesta.Datos.ExpiraBootstrapEn.Format(time.RFC3339))
+}

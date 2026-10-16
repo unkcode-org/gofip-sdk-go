@@ -16,7 +16,7 @@ func main() {
 		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 
 	err = cliente.Documentos.GenerarYGuardarComprobante(
@@ -33,6 +33,6 @@ func main() {
 		gofip.OpcionesGuardado{Sobrescribir: false},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 }

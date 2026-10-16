@@ -16,7 +16,7 @@ func main() {
 		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 
 	ctx := context.Background()
@@ -46,7 +46,7 @@ func main() {
 		gofip.OpcionesGenerarRecibo{ClaveIdempotencia: "recibo-pago-123"},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 
 	fmt.Println("Documento:", respuesta.DocumentoID)
@@ -56,6 +56,6 @@ func main() {
 		"documentos/recibo.pdf",
 		gofip.OpcionesGuardado{Sobrescribir: false},
 	); err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 }

@@ -16,7 +16,7 @@ func main() {
 		ClaveAPI: os.Getenv("GOFIP_API_KEY"),
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 
 	nombreCliente := "LERVU S.A."
@@ -35,6 +35,6 @@ func main() {
 		gofip.OpcionesGuardado{Sobrescribir: true},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("no se pudo completar la operación de documentos")
 	}
 }

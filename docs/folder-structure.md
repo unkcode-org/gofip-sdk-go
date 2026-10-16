@@ -26,3 +26,5 @@ errores compartidos. Los modelos públicos grandes se separan por dominio para
 evitar un paquete raíz difícil de navegar.
 
 `docs/openapi.yaml` es la fuente de verdad del contrato HTTP.
+
+El cliente SEP está en `cliente_sep.go`, `sep.go` y `transporte_sep.go`; sus modelos están en `modelos/sep`. Las consultas persistidas están en `facturas_persistidas.go` y `modelos/facturacion/persistidas.go`. Ver [arquitectura](arquitectura.md).

@@ -1,0 +1,22 @@
+name: SDK Go
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tests:
+    strategy:
+      matrix:
+        go: ["1.22.2", "stable"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Consumo desde otro modulo
+        working-directory: integration/consumer
+        run: go test -race ./...
