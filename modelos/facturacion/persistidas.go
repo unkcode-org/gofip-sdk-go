@@ -1,19 +1,21 @@
-// Modelos del contrato OpenAPI 2.18.0, schemas RespuestaFacturaPersistida y DatosFacturaCompleta.
+// Modelos del contrato OpenAPI 2.19.0, schemas RespuestaFacturaPersistida y DatosFacturaCompleta.
 package facturacion
 
 import "time"
 
 type RespuestaFacturaPersistida struct {
-	DocumentoID       string               `json:"documento_id"`
-	EmisorID          string               `json:"emisor_id"`
-	PuntoVentaID      string               `json:"punto_venta_id"`
-	Estado            string               `json:"estado"`
-	Origen            string               `json:"origen"`
-	ExternalReference string               `json:"external_reference,omitempty"`
-	Factura           *DetalleDatosFactura `json:"factura"`
-	PDF               EstadoPDFFactura     `json:"pdf"`
-	CreatedAt         time.Time            `json:"created_at"`
-	UpdatedAt         time.Time            `json:"updated_at"`
+	Verificacion          *VerificacionImportacion `json:"verificacion,omitempty"`
+	CompletitudDocumental *CompletitudDocumental   `json:"completitud_documental,omitempty"`
+	DocumentoID           string                   `json:"documento_id"`
+	EmisorID              string                   `json:"emisor_id"`
+	PuntoVentaID          string                   `json:"punto_venta_id"`
+	Estado                string                   `json:"estado"`
+	Origen                string                   `json:"origen"`
+	ExternalReference     string                   `json:"external_reference,omitempty"`
+	Factura               *DetalleDatosFactura     `json:"factura"`
+	PDF                   EstadoPDFFactura         `json:"pdf"`
+	CreatedAt             time.Time                `json:"created_at"`
+	UpdatedAt             time.Time                `json:"updated_at"`
 }
 
 type EstadoPDFFactura struct {
@@ -24,6 +26,7 @@ type EstadoPDFFactura struct {
 }
 
 type DetalleDatosFactura struct {
+	Historico             *DatosFiscalesHistoricos     `json:"historico,omitempty"`
 	FacturaID             string                       `json:"factura_id"`
 	CAE                   string                       `json:"cae"`
 	FechaVencimientoCAE   string                       `json:"fecha_vencimiento_cae"`

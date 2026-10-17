@@ -4,7 +4,7 @@
 
 Definir `GOFIP_API_URL`, `GOFIP_API_KEY` y, sólo para SEP, `GOFIP_SEP_KEY` mediante
 variables del entorno. No pegarlas en logs, comandos compartidos ni archivos
-versionados. La URL corresponde al backend V2 actualizado con OpenAPI 2.18.0.
+versionados. La URL corresponde al backend V2 actualizado con OpenAPI 2.19.0.
 
 Los ejemplos de consulta no generan efectos fiscales. El ejemplo de emisión sí
 emite: usar homologación y una venta de prueba deliberada.
@@ -58,3 +58,12 @@ crear/eliminar una base temporal exclusiva. No usa tablas de la base del DSN.
 La prueba real de GOFIP y MySQL queda a cargo del integrador antes de publicar.
 
 El módulo externo de prueba está incluido en `integration/consumer`: ejecutar `go test ./...` desde esa carpeta. El replace local permite validar los imports `/v2` sin publicar tags.
+
+## Importaciones históricas
+
+Ver [guía de importación](importacion-facturas.md). La suite comprueba contrato,
+precisión, ausencia de selector de ambiente, redacción, cancelación, límites y
+cero retries/fallbacks con servidores falsos. El backend tiene la prueba real
+opt-in `TestImportacionMySQLMultiproceso` (dos procesos/diez solicitudes) usando
+`GOFIP_IMPORT_TEST_MYSQL_DSN` de un servidor descartable, además de backfill y
+precisión SQL. La guía del backend incluye auditoría previa y provisión de permisos.

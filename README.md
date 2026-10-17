@@ -10,13 +10,13 @@ de errores HTTP y la descarga de documentos.
 | Componente | Versión usada |
 | --- | --- |
 | Módulo Go | `v2` (`github.com/unkcode-org/gofip-sdk-go/v2`) |
-| API GOFIP | `2.18.0` y rutas bajo `/api/v2` |
+| API GOFIP | `2.19.0` y rutas bajo `/api/v2` |
 | Especificación OpenAPI | `3.0.3` |
 | Go | `1.22.2` o posterior |
 
 El contrato HTTP de referencia está en
 [`docs/openapi.yaml`](docs/openapi.yaml). Los campos `openapi: 3.0.3` e
-`info.version: "2.18.0"` indican, respectivamente, la versión del formato OpenAPI
+`info.version: "2.19.0"` indican, respectivamente, la versión del formato OpenAPI
 y la versión del contrato de la API. No deben confundirse con una versión
 publicada del módulo Go.
 
@@ -27,6 +27,7 @@ publicada del módulo Go.
   comprobante, opcionales, tipos de documento, monedas y cotizaciones.
 - Consultas de padrón P4, P5, P10 y P13.
 - Emisión de facturas y consulta de comprobantes.
+- Importación fiscal histórica verificada de GOFIP Legacy, con capability explícita.
 - Generación y descarga de comprobantes, facturas y recibos en PDF.
 - Errores tipados para respuestas de la API y respuestas HTTP no estructuradas.
 - Cliente HTTP y URL base configurables.
@@ -335,7 +336,10 @@ no comprueba la existencia del objeto remoto ni genera una URL firmada.
 
 **Ambiente:** GOFIP no persiste el ambiente en Documento/Factura. Estas consultas
 no envían `X-ARCA-Ambiente` y no filtran por homologación/producción. Los registros
-exclusivos de Legacy requieren una migración de datos independiente.
+exclusivos de Legacy se incorporan mediante `ImportarFactura`, previa verificación
+obligatoria en ARCA Producción y capability explícita. Ver
+[importación histórica](docs/importacion-facturas.md) para modelos, uso, errores,
+idempotencia y límites de PDF. No hay batch ni emisión como fallback.
 
 ## Integraciones SEP: un cliente y una credencial distintos
 
@@ -408,6 +412,6 @@ go test -race ./...
 ```
 
 Ver [arquitectura](docs/arquitectura.md) y [validación manual](docs/validacion.md).
-El contrato de referencia es OpenAPI 2.18.0 del backend. No se publica una versión
+El contrato de referencia es OpenAPI 2.19.0 del backend. No se publica una versión
 como parte de estas pruebas. La secuencia prevista es `v2.0.0-rc.1` → `v2.0.0`,
 con imports `/v2`, validación externa y aprobación de publicación.
