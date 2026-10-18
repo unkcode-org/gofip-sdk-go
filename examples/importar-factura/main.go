@@ -1,5 +1,5 @@
 // Importa una única autorización Legacy existente. Ejecutar sólo con una
-// solicitud revisada y una concesión facturas:import del entorno autorizado.
+// solicitud revisada y la API key normal del mismo emisor/PV en el entorno autorizado.
 package main
 
 import (

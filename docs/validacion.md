@@ -66,4 +66,5 @@ precisión, ausencia de selector de ambiente, redacción, cancelación, límites
 cero retries/fallbacks con servidores falsos. El backend tiene la prueba real
 opt-in `TestImportacionMySQLMultiproceso` (dos procesos/diez solicitudes) usando
 `GOFIP_IMPORT_TEST_MYSQL_DSN` de un servidor descartable, además de backfill y
-precisión SQL. La guía del backend incluye auditoría previa y provisión de permisos.
+precisión SQL. La guía del backend describe la autorización por API key del PV
+y el backfill transaccional que aborta ante datos fiscales incompatibles.

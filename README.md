@@ -27,7 +27,7 @@ publicada del módulo Go.
   comprobante, opcionales, tipos de documento, monedas y cotizaciones.
 - Consultas de padrón P4, P5, P10 y P13.
 - Emisión de facturas y consulta de comprobantes.
-- Importación fiscal histórica verificada de GOFIP Legacy, con capability explícita.
+- Importación fiscal histórica verificada de GOFIP Legacy, con API key normal del mismo emisor/PV.
 - Generación y descarga de comprobantes, facturas y recibos en PDF.
 - Errores tipados para respuestas de la API y respuestas HTTP no estructuradas.
 - Cliente HTTP y URL base configurables.
@@ -337,7 +337,7 @@ no comprueba la existencia del objeto remoto ni genera una URL firmada.
 **Ambiente:** GOFIP no persiste el ambiente en Documento/Factura. Estas consultas
 no envían `X-ARCA-Ambiente` y no filtran por homologación/producción. Los registros
 exclusivos de Legacy se incorporan mediante `ImportarFactura`, previa verificación
-obligatoria en ARCA Producción y capability explícita. Ver
+obligatoria en ARCA Producción y API key normal del mismo emisor/PV. Ver
 [importación histórica](docs/importacion-facturas.md) para modelos, uso, errores,
 idempotencia y límites de PDF. No hay batch ni emisión como fallback.
 

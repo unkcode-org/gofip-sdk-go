@@ -9,7 +9,7 @@ dependencias ni se modifica la semántica del transporte anterior.
 
 | Operación | Fuente | Cliente |
 | --- | --- | --- |
-| ImportarFactura | FECompConsultar Producción → persistencia; capability explícita | Bearer |
+| ImportarFactura | FECompConsultar Producción → persistencia; API key normal del mismo emisor/PV | Bearer |
 | EmitirFactura | GOFIP → ARCA, persistencia | Bearer |
 | ObtenerComprobante | Consulta directa a ARCA | Bearer |
 | ObtenerFacturaPorCAE / ObtenerFacturaPorId | MySQL exclusivamente | Bearer |

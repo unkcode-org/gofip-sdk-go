@@ -28,7 +28,7 @@ var patronCAEImportacion = regexp.MustCompile(`^[0-9]{1,20}$`)
 var patronDocumentoImportacion = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // ImportarFactura imports an existing authorization; it never calls EmitirFactura.
-// The API requires a separately granted facturas:import capability. There are no
+// The API key may import only invoices from its own issuer and point of sale. No
 // application retries, redirects, PDF generation or Legacy fallbacks.
 func (s *ServicioFacturacion) ImportarFactura(ctx context.Context, solicitud facturacion.SolicitudImportarFactura, o OpcionesImportacionFactura) (*facturacion.RespuestaImportarFactura, error) {
 	f := solicitud.Factura

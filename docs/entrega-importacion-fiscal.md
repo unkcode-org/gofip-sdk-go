@@ -1,4 +1,12 @@
-# Entrega de importación fiscal histórica — 2026-10-16
+# Entrega de importación fiscal histórica — actualizada 2026-10-18
+
+Revisión de autorización del 2026-10-18: backend
+`7918e9d373a8cbc298258cb9314d5d33e54d38b3`. La API key normal del propio emisor/PV
+es toda la autorización necesaria. Esta revisión del SDK actualiza sólo textos,
+comentarios, contrato copiado y su test; no cambia el método ni las opciones públicas.
+La validación actual vuelve a pasar test/vet/race y el consumidor externo.
+La evidencia completa de migración y concurrencia está en
+`backend/docs/VALIDACION_IMPORTACION_FISCAL.md` del backend.
 
 ## 1. Commits y ubicación
 
@@ -19,15 +27,16 @@ El checkout original del SDK quedó intacto. No hubo push, PR, merge, tag ni rel
 
 El inventario completo está al final. La implementación abarca dominio/puertos,
 repositorios MySQL, adapter de consulta SOAP, handlers/ruta, errores, renderer
-protegido, CLI administrativa y contrato/documentación. El SDK agrega método,
+protegido y contrato/documentación. El SDK agrega método,
 modelos tipados, ejemplo individual, tests y consumidor externo.
 
 ## 3. Migración
 
-`202610160002_importacion_fiscal` audita duplicados, identidades incompletas,
-PV inconsistentes y facturas huérfanas antes de crear/backfillear el registro de
-identidades. Los hallazgos abortan con reporte; nunca se corrigen silenciosamente.
-Crea cuatro tablas: identidades, permisos, operaciones y referencias de importación.
+`202610160002_importacion_fiscal` registra las identidades de documentos
+V2 autorizados en una transacción. Datos incompletos, PV inconsistentes o
+identidades incompatibles hacen fallar el backfill con un error que identifica
+el documento. Las constraints UNIQUE son la garantía final; no corrige datos.
+Crea tres tablas: identidades, operaciones y referencias de importación.
 Los campos de snapshot/verificación/completitud y la ampliación decimal se
 incorporan al esquema histórico mediante el AutoMigrate existente. El rollback
 rechaza datos fiscales/operacionales y conserva las tablas aditivas vacías.
@@ -61,13 +70,15 @@ incompatibles; 404 ARCA ausente; 502 respuesta fiscal inválida; 503 indisponibl
 Las facturas son documentos autorizados normales y usan los GET existentes por
 ID/CAE, con lectura por emisor y aislamiento entre emisores.
 
-## 7. Capability
+## 7. Autorización
 
-`facturas:import`, concesión explícita por credencial/emisor/PV objetivo,
-namespace inmutable, vigencia/expiración/revocación. No se hereda de emisión ni
-SEP. Se comprueba antes de consultar y nuevamente antes de persistir.
-`cmd/importaciones-admin` permite audit/grant/revoke con DSN administrativo
-explícito. Ningún cliente elige emisor ni amplía su autoridad mediante parámetros.
+La API key normal activa del PV es suficiente. El backend recibe la credencial,
+su PV y su emisor de la autenticación existente y exige que el PV solicitado sea
+exactamente el asociado a esa credencial. Otro PV, aun del mismo emisor, devuelve
+404 sin consultar ARCA. Se vuelve a validar la relación antes de persistir.
+Claves y referencias se aíslan mediante SHA-256 del array JSON ordenado
+`[emisor_id, credencial_id, punto_venta_id, clave_o_referencia]` en tablas separadas.
+No hay configuración adicional de autorización para importaciones.
 
 ## 8. Consulta ARCA
 
@@ -131,10 +142,10 @@ activó su servicio del sistema.
 
 ## 13. OpenAPI
 
-Contrato canónico **2.19.0**, endpoint, modelos, optional/nullable, capability,
+Contrato canónico **2.19.0**, endpoint, modelos, optional/nullable, autorización por credencial/PV,
 procedencia, idempotencia, referencias, errores, origen y datos de consulta.
 Copia SDK exacta con SHA-256
-`372eba5c86ce70671c77870df4540f8070174cf576d597b7157cde1b71f9d365`.
+`82ed564929b6c46e608d7922dc0a4fb93e1f4e1c2d8ec7bc06d434b4975d92b1`.
 Procedencia completa en `docs/CONTRATO.md`; test local detecta drift.
 
 ## 14. Documentación y observabilidad
@@ -149,9 +160,9 @@ certificados o URLs firmadas.
 
 ## 15. Límites y riesgos pendientes
 
-- No se contactó ARCA real ni se auditaron datos de producción. Certificados,
+- No se contactó ARCA real ni se modificaron datos de producción. Certificados,
   delegaciones WSFE productivas y disponibilidad requieren validación posterior.
-- Auditar y resolver hallazgos de la base objetivo antes de aplicar el esquema.
+- Si el backfill encuentra datos incompatibles, aborta sin corregirlos.
   Drenar todos los escritores anteriores y detener escrituras fiscales durante
   el cambio; un binario antiguo no conoce la tabla de identidad compartida.
 - PDF histórico queda explícitamente bloqueado en V1 (13106/13107). Se conservan
@@ -168,8 +179,8 @@ certificados o URLs firmadas.
 ## 16. Primer migrador real de Joyería Elixir, posteriormente
 
 1. Revisar estos commits y coordinar despliegue/migración de esquema por separado.
-2. Auditar base objetivo y habilitar configuración/delegación productiva del emisor.
-3. Conceder capability temporal para sus PV y namespace estable de importación.
+2. Preparar configuración/delegación productiva del emisor.
+3. Usar la API key normal del PV correspondiente a cada comprobante.
 4. Implementar en Elixir el adaptador de `OrderPaymentFiscalData`, sin inventar
    ausencias ni recalcular importes; incluir los datos conocidos como afirmaciones.
 5. Importar individualmente con clave/referencia estable, persistir documento_id
@@ -184,7 +195,6 @@ reales, emisión, despliegue, migración de producción o publicación automáti
 ## Inventario Backend (rutas relativas a gofip-backend)
 
 - `backend/README.md`
-- `backend/cmd/importaciones-admin/main.go`
 - `backend/cmd/main.go`
 - `backend/docs/CHANGELOG.md`
 - `backend/docs/IMPORTACION_FACTURAS_LEGACY.md`
@@ -198,8 +208,6 @@ reales, emisión, despliegue, migración de producción o publicación automáti
 - `backend/internal/adapter/db/mysql/integridad_fiscal_test.go`
 - `backend/internal/adapter/db/mysql/migraciones.go`
 - `backend/internal/adapter/db/mysql/migraciones_test.go`
-- `backend/internal/adapter/db/mysql/permisos_importacion.go`
-- `backend/internal/adapter/db/mysql/permisos_importacion_test.go`
 - `backend/internal/adapter/db/mysql/repositorio_facturacion.go`
 - `backend/internal/adapter/db/mysql/repositorio_importaciones.go`
 - `backend/internal/adapter/db/mysql/repositorio_integracion_embedded_test.go`

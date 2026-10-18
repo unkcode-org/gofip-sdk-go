@@ -62,19 +62,23 @@ paths:
         - Facturación persistida
         operationId: importarFacturaHistorica
         summary: Importa una factura Legacy ya autorizada
-        description: Exige API key y concesión explícita facturas:import con emisor, PV,
-          namespace, vigencia y revocación del servidor. Legacy siempre consulta FECompConsultar
-          en ARCA Producción; X-ARCA-Ambiente no selecciona ambiente. No admite emisor
-          ni ambiente en el body. Nunca autoriza, genera PDF ni envía correo. Idempotency-Key
-          es obligatorio, separado de emisión y acotado a emisor+namespace; reutilizarlo
-          con otros datos produce 409. La identidad emisor+PV+tipo+número es única aun
-          entre credenciales. Las referencias son únicas sólo dentro de emisor+namespace
-          de importación; la columna legacy external_reference sigue sin unicidad global.
-          Replays completados recuperan el resultado guardado; fallos de consulta pueden
-          reanudarse con la misma solicitud. Un fallo nunca habilita emisión.
+        description: La credencial API válida puede importar únicamente comprobantes
+          correspondientes al mismo emisor y punto de venta al que está asociada.
+          El backend verifica CredencialPuntoVenta -> PuntoVenta -> Emisor y exige
+          que factura.punto_venta coincida con el número fiscal de ese PuntoVenta.
+          Un PV fuera de ese scope devuelve 404 sin consultar ARCA.
+          Legacy siempre consulta FECompConsultar en ARCA Producción;
+          X-ARCA-Ambiente no selecciona ambiente. No admite emisor ni ambiente en el body.
+          Nunca autoriza, genera PDF ni envía correo. Idempotency-Key es obligatorio,
+          separado de emisión y acotado a emisor_id+credencial_id+punto_venta_id;
+          reutilizarlo con otros datos produce 409. La identidad emisor+PV+tipo+número
+          es única aun entre credenciales. Las referencias son únicas dentro del
+          mismo scope de importación; external_reference no tiene unicidad global
+          ni identifica fiscalmente el comprobante. Replays completados recuperan
+          el resultado guardado; fallos de consulta pueden reanudarse con la misma
+          solicitud. Un fallo nunca habilita emisión.
         security:
         - BearerAuth: []
-        x-required-capability: facturas:import
         parameters:
         - name: Idempotency-Key
           in: header
@@ -88,7 +92,7 @@ paths:
         - name: X-External-Reference
           in: header
           required: false
-          description: Referencia exacta dentro del namespace concedido por GOFIP.
+          description: Referencia exacta dentro del scope emisor_id+credencial_id+punto_venta_id.
           schema:
             type: string
             maxLength: 120
@@ -125,8 +129,7 @@ paths:
                 schema:
                   $ref: '#/components/schemas/DetallesError'
           '403':
-            description: Sin capability facturas:import vigente para el PV; no consulta
-              ARCA.
+            description: Credencial revocada o acceso denegado por las reglas normales de autenticación.
             content:
               application/problem+json:
                 schema:

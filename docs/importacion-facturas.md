@@ -1,9 +1,11 @@
 # Importar autorizaciones históricas Legacy
 
-`ImportarFactura` requiere Backend V2 con OpenAPI 2.19.0 y una API key con
-concesión explícita `facturas:import`. Una clave emisora común devuelve 403.
-El operador concede PV objetivos del mismo emisor, namespace, vigencia y
-revocación; el consumidor no envía emisor ni ambiente. SEP no habilita imports.
+`ImportarFactura` requiere Backend V2 con OpenAPI 2.19.0 y una API key normal
+activa del Punto de Venta. La credencial sólo puede importar comprobantes de su
+propio emisor y PV, incluso si ese emisor tiene varios PV. El consumidor no envía
+emisor, ambiente ni autoridad adicional. El backend verifica la relación
+`CredencialPuntoVenta -> PuntoVenta -> Emisor` y compara el número fiscal del PV
+con `solicitud.Factura.PuntoVenta`. Otro PV devuelve 404 sin consultar ARCA.
 
 ```go
 solicitud := facturacion.SolicitudImportarFactura{
@@ -59,7 +61,7 @@ información, 13107 si requiere el renderer histórico aún no implementado.
 ## Idempotencia, referencias y fallas
 
 La clave operacional es obligatoria y estable (hasta 120 bytes). Su scope es
-`emisor + namespace autorizado + clave`, separado de la emisión. La misma clave
+`emisor_id + credencial_id + punto_venta_id + clave`, separado de la emisión. La misma clave
 con contenido distinto produce 409. Tras un timeout se puede repetir exactamente
 la misma solicitud y clave; el SDK no reintenta automáticamente. Tampoco sigue
 redirecciones, conserva cookies ni permite el replay transparente del body por
@@ -69,13 +71,18 @@ integrador y debe evitar retries y registros de secretos.
 La identidad definitiva es `emisor + PV + tipo + número`, protegida por UNIQUE
 real compartida con emisión normal. Distintas claves para la misma identidad
 compatible devuelven el mismo documento. La referencia tiene scope
-`emisor + namespace`; repetida hacia otro documento produce 409. No cambia la
-unicidad de referencias de emisión.
+`emisor_id + credencial_id + punto_venta_id`; repetida hacia otro documento produce 409. No cambia la
+unicidad de referencias de emisión. Ambos scopes usan SHA-256 de un array JSON
+ordenado con los cuatro strings; los IDs aíslan credenciales, emisores y PV.
+La referencia es opcional y no define la identidad fiscal. Una nueva credencial
+crea otro scope, pero la identidad fiscal conserva el documento compatible.
 
 | HTTP / código | Acción del consumidor |
 |---|---|
 | 400 / 13100 | Corregir solicitud inválida |
-| 403 / 13102 | Revisar concesión, PV y vigencia |
+| 401 / 12004, 12005 | Revisar validez y expiración de la API key |
+| 403 / 12003 | Credencial revocada o inactiva |
+| 404 | Verificar que el PV sea el propio de la credencial |
 | 404 / 13103 | ARCA no encontró el comprobante; investigar |
 | 409 / 13101 | Resolver conflicto de identidad, datos, referencia o clave |
 | 413 / 13100 | Reducir body a 1 MiB |
