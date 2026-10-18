@@ -28,3 +28,6 @@ evitar un paquete raíz difícil de navegar.
 `docs/openapi.yaml` es la fuente de verdad del contrato HTTP.
 
 El cliente SEP está en `cliente_sep.go`, `sep.go` y `transporte_sep.go`; sus modelos están en `modelos/sep`. Las consultas persistidas están en `facturas_persistidas.go` y `modelos/facturacion/persistidas.go`. Ver [arquitectura](arquitectura.md).
+
+La primitiva histórica está en `importacion_facturas.go` y sus modelos en
+`modelos/facturacion/importacion.go`. Ver [uso y garantías](importacion-facturas.md).

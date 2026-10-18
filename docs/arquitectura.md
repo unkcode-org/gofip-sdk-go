@@ -9,6 +9,7 @@ dependencias ni se modifica la semántica del transporte anterior.
 
 | Operación | Fuente | Cliente |
 | --- | --- | --- |
+| ImportarFactura | FECompConsultar Producción → persistencia; API key normal del mismo emisor/PV | Bearer |
 | EmitirFactura | GOFIP → ARCA, persistencia | Bearer |
 | ObtenerComprobante | Consulta directa a ARCA | Bearer |
 | ObtenerFacturaPorCAE / ObtenerFacturaPorId | MySQL exclusivamente | Bearer |
@@ -24,8 +25,8 @@ Los modelos fiscales persistidos tienen identidad distinta del comprobante ARCA:
 incluyen documento/factura ID, estado GOFIP, ítems guardados y metadata PDF. Las
 consultas por CAE e ID comparten `RespuestaFacturaPersistida`. No se recuperan datos
 desde Legacy, ARCA o entidades mutables como fallback. No existe filtro de ambiente
-porque el modelo actual no persiste ese dato. No se agregan migraciones ni índices
-únicos de CAE. Un CAE ambiguo produce 409 y admite filtros explícitos.
+porque el modelo actual no persiste ese dato. La importación agrega identidad fiscal compartida por emisor/PV/tipo/número,
+sin índice único de CAE. Un CAE ambiguo produce 409 y admite filtros explícitos.
 
 SEP nunca guarda cookies de navegador ni hace intercambio de bootstrap. Sus
 respuestas contienen capacidades de corta duración con acceso explícito mediante
@@ -37,3 +38,7 @@ El contrato canónico se mantiene en `backend/docs/openapi.yaml` de gofip-backen
 `docs/openapi.yaml` es una copia exacta. Cada cambio debe comenzar en el backend,
 incrementar su versión y changelog y luego sincronizar esta copia. El SDK conserva
 el módulo `/v2` y Go mínimo 1.22.2.
+
+La importación usa un transporte con redacción de errores y sin retries ni
+redirecciones. Su configuración no acepta ambiente y no modifica el transporte
+de emisión. Ver [importación histórica](importacion-facturas.md).

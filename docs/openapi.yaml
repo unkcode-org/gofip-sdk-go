@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
     title: GO ARCA API
-    version: "2.18.0"
+    version: "2.19.0"
     description: >-
         API REST para gestión de emisores, puntos de venta, credenciales API y
         facturación electrónica con ARCA. Todos los cuerpos JSON de entrada usan el
@@ -56,6 +56,121 @@ tags:
     - name: WhatsApp
       description: Gestión de sesiones OpenWA y envío genérico de mensajes para cada emisor.
 paths:
+    /api/v2/facturas/importaciones:
+      post:
+        tags:
+        - Facturación persistida
+        operationId: importarFacturaHistorica
+        summary: Importa una factura Legacy ya autorizada
+        description: La credencial API válida puede importar únicamente comprobantes
+          correspondientes al mismo emisor y punto de venta al que está asociada.
+          El backend verifica CredencialPuntoVenta -> PuntoVenta -> Emisor y exige
+          que factura.punto_venta coincida con el número fiscal de ese PuntoVenta.
+          Un PV fuera de ese scope devuelve 404 sin consultar ARCA.
+          Legacy siempre consulta FECompConsultar en ARCA Producción;
+          X-ARCA-Ambiente no selecciona ambiente. No admite emisor ni ambiente en el body.
+          Nunca autoriza, genera PDF ni envía correo. Idempotency-Key es obligatorio,
+          separado de emisión y acotado a emisor_id+credencial_id+punto_venta_id;
+          reutilizarlo con otros datos produce 409. La identidad emisor+PV+tipo+número
+          es única aun entre credenciales. Las referencias son únicas dentro del
+          mismo scope de importación; external_reference no tiene unicidad global
+          ni identifica fiscalmente el comprobante. Replays completados recuperan
+          el resultado guardado; fallos de consulta pueden reanudarse con la misma
+          solicitud. Un fallo nunca habilita emisión.
+        security:
+        - BearerAuth: []
+        parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Clave estable de importación; no comparte el espacio de claves
+            de EmitirFactura.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+        - name: X-External-Reference
+          in: header
+          required: false
+          description: Referencia exacta dentro del scope emisor_id+credencial_id+punto_venta_id.
+          schema:
+            type: string
+            maxLength: 120
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuerpoSolicitudImportarFactura'
+        responses:
+          '200':
+            description: Identidad existente compatible; mismo documento y origen original.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/RespuestaImportarFactura'
+          '201':
+            description: Factura histórica verificada y persistida.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/RespuestaImportarFactura'
+          '400':
+            description: Solicitud inválida, campo desconocido o emisor/ambiente no permitido
+              en el body.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '401':
+            description: Credencial inválida o expirada.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '403':
+            description: Credencial revocada o acceso denegado por las reglas normales de autenticación.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '404':
+            description: Comprobante inexistente en ARCA o recurso ajeno no accesible.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '409':
+            description: Conflicto fiscal, CAE/mismatch, idempotencia o referencia vinculada
+              a otro documento.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '413':
+            description: Body mayor a 1 MiB.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '500':
+            description: Fallo de persistencia; repetir la misma importación permite recuperar un commit previo sin emitir.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '502':
+            description: Respuesta fiscal inválida o incompleta.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
+          '503':
+            description: Consulta ARCA indisponible o timeout; no se crea una factura.
+            content:
+              application/problem+json:
+                schema:
+                  $ref: '#/components/schemas/DetallesError'
     /api/v2/facturas/cae/{cae}:
         get:
             tags:
@@ -3350,6 +3465,12 @@ paths:
                         schema:
                             $ref: "#/components/schemas/CuerpoSolicitudGenerarPDFFactura"
             responses:
+                '409':
+                    description: Factura legacy_import sin regeneración documental histórica disponible (13106 o 13107). Nunca utiliza fichas actuales, envía correos ni emite.
+                    content:
+                        application/problem+json:
+                            schema:
+                                $ref: '#/components/schemas/DetallesError'
                 "200":
                     description: URL firmada de descarga del PDF
                     content:
@@ -4299,6 +4420,647 @@ components:
                     schema:
                         type: string
     schemas:
+        DecimalHistorico:
+          type: string
+          pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+          maxLength: 24
+          description: Decimal exacto; no usar notación exponencial ni float para recalcular
+            históricos.
+        IVAHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: id.
+            base_imponible:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            importe:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+          required:
+          - id
+          - base_imponible
+          - importe
+          description: IVAHistorico.
+        TributoHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: id.
+            descripcion:
+              type: string
+              description: descripcion.
+              nullable: true
+            base_imponible:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            alicuota:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            importe:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+          required:
+          - id
+          - base_imponible
+          - alicuota
+          - importe
+          description: TributoHistorico.
+        OpcionalHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: string
+              description: id.
+            valor:
+              type: string
+              description: valor.
+              nullable: true
+          required:
+          - id
+          description: OpcionalHistorico.
+        CompradorHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            tipo_documento:
+              type: integer
+              format: int64
+              description: tipo documento.
+            numero_documento:
+              type: string
+              description: numero documento.
+            porcentaje:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+          required:
+          - tipo_documento
+          - numero_documento
+          - porcentaje
+          description: CompradorHistorico.
+        AsociadoHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            tipo:
+              type: integer
+              format: int64
+              description: tipo.
+            punto_venta:
+              type: integer
+              format: int64
+              description: punto venta.
+            numero:
+              type: integer
+              format: int64
+              description: numero.
+            cuit:
+              type: string
+              description: cuit.
+              nullable: true
+            fecha:
+              type: string
+              description: fecha.
+              nullable: true
+          required:
+          - tipo
+          - punto_venta
+          - numero
+          description: AsociadoHistorico.
+        ActividadHistorica:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: id.
+          required:
+          - id
+          description: ActividadHistorica.
+        PeriodoHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            fecha_desde:
+              type: string
+              description: fecha desde.
+            fecha_hasta:
+              type: string
+              description: fecha hasta.
+          required:
+          - fecha_desde
+          - fecha_hasta
+          description: PeriodoHistorico.
+        ObservacionHistorica:
+          type: object
+          additionalProperties: false
+          properties:
+            codigo:
+              type: integer
+              format: int64
+              description: codigo.
+            mensaje:
+              type: string
+              description: mensaje.
+              nullable: true
+          required:
+          - codigo
+          description: ObservacionHistorica.
+        DatosFiscalesHistoricos:
+          type: object
+          additionalProperties: false
+          properties:
+            resultado:
+              type: string
+              nullable: true
+              description: resultado.
+            tipo_emision:
+              type: string
+              nullable: true
+              description: tipo emision.
+            cae:
+              type: string
+              nullable: true
+              description: cae.
+            fecha_vencimiento_cae:
+              type: string
+              nullable: true
+              description: fecha vencimiento cae.
+            fecha_comprobante:
+              type: string
+              nullable: true
+              description: fecha comprobante.
+            numero_documento:
+              type: string
+              nullable: true
+              description: numero documento.
+            moneda_id:
+              type: string
+              nullable: true
+              description: moneda id.
+            fecha_servicio_desde:
+              type: string
+              nullable: true
+              description: fecha servicio desde.
+            fecha_servicio_hasta:
+              type: string
+              nullable: true
+              description: fecha servicio hasta.
+            fecha_vencimiento_pago:
+              type: string
+              nullable: true
+              description: fecha vencimiento pago.
+            fecha_proceso:
+              type: string
+              nullable: true
+              description: fecha proceso.
+            cancela_misma_moneda:
+              type: string
+              nullable: true
+              description: cancela misma moneda.
+            punto_venta:
+              type: integer
+              format: int64
+              nullable: true
+              description: punto venta.
+            tipo_comprobante:
+              type: integer
+              format: int64
+              nullable: true
+              description: tipo comprobante.
+            comprobante_desde:
+              type: integer
+              format: int64
+              nullable: true
+              description: comprobante desde.
+            comprobante_hasta:
+              type: integer
+              format: int64
+              nullable: true
+              description: comprobante hasta.
+            concepto:
+              type: integer
+              format: int64
+              nullable: true
+              description: concepto.
+            tipo_documento:
+              type: integer
+              format: int64
+              nullable: true
+              description: tipo documento.
+            condicion_iva_receptor:
+              type: integer
+              format: int64
+              nullable: true
+              description: Identificador ARCA histórico; no equivale a CondicionFiscal del
+                catálogo interno GOFIP. Permanece ausente cuando ARCA no lo devuelve.
+            cotizacion:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_total:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_neto:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_iva:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_exento:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_no_gravado:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            importe_tributos:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+              nullable: true
+            alicuotas_iva:
+              type: array
+              items:
+                $ref: '#/components/schemas/IVAHistorico'
+              nullable: true
+              description: alicuotas iva.
+              maxItems: 1000
+            tributos:
+              type: array
+              items:
+                $ref: '#/components/schemas/TributoHistorico'
+              nullable: true
+              description: tributos.
+              maxItems: 1000
+            comprobantes_asociados:
+              type: array
+              items:
+                $ref: '#/components/schemas/AsociadoHistorico'
+              nullable: true
+              description: comprobantes asociados.
+              maxItems: 1000
+            opcionales:
+              type: array
+              items:
+                $ref: '#/components/schemas/OpcionalHistorico'
+              nullable: true
+              description: opcionales.
+              maxItems: 1000
+            compradores:
+              type: array
+              items:
+                $ref: '#/components/schemas/CompradorHistorico'
+              nullable: true
+              description: compradores.
+              maxItems: 1000
+            actividades:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActividadHistorica'
+              nullable: true
+              description: actividades.
+              maxItems: 1000
+            observaciones:
+              type: array
+              items:
+                $ref: '#/components/schemas/ObservacionHistorica'
+              nullable: true
+              description: observaciones.
+              maxItems: 1000
+            periodo_asociado:
+              allOf:
+              - $ref: '#/components/schemas/PeriodoHistorico'
+              nullable: true
+              description: Dato opcional, ausente cuando no consta.
+          description: Campos presentes de la fuente fiscal. En el request son valores esperados
+            que se comparan con ARCA; un campo ausente no equivale a cero/lista vacía. No
+            se inventan datos. La respuesta conserva decimales y estructuras históricas.
+        FacturaHistorica:
+          type: object
+          additionalProperties: false
+          properties:
+            punto_venta:
+              type: integer
+              minimum: 1
+              maximum: 99999
+              description: punto venta.
+            tipo_comprobante:
+              type: integer
+              minimum: 1
+              description: tipo comprobante.
+            numero_comprobante:
+              type: integer
+              format: int64
+              minimum: 1
+              maximum: 99999999
+              description: numero comprobante.
+            cae:
+              type: string
+              pattern: ^[0-9]{1,20}$
+              description: cae.
+            datos_historicos:
+              allOf:
+              - $ref: '#/components/schemas/DatosFiscalesHistoricos'
+              nullable: true
+              description: Afirmaciones fiscales opcionales. Todos los valores aportados deben
+                coincidir con la consulta ARCA. No completan silenciosamente campos ausentes
+                en la fuente fiscal.
+          required:
+          - punto_venta
+          - tipo_comprobante
+          - numero_comprobante
+          - cae
+          description: FacturaHistorica.
+        ProcedenciaFactura:
+          type: object
+          additionalProperties: false
+          properties:
+            sistema:
+              type: string
+              enum:
+              - gofip_legacy
+              description: sistema.
+            registro_id:
+              type: string
+              maxLength: 120
+              description: Identificador estable del registro en el sistema cliente. Es opcional;
+                no se exige un invoice_id central Legacy inexistente.
+          required:
+          - sistema
+          description: ProcedenciaFactura.
+        ItemHistorico:
+          type: object
+          additionalProperties: false
+          properties:
+            referencia_original:
+              type: string
+              maxLength: 120
+              description: referencia original.
+            descripcion:
+              type: string
+              maxLength: 255
+              description: descripcion.
+            cantidad:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            precio_unitario:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            subtotal:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            monto_iva:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            total:
+              type: string
+              pattern: ^-?[0-9]{1,16}(\.[0-9]{1,6})?$
+              maxLength: 24
+              description: Decimal exacto; no usar notación exponencial ni float para recalcular
+                históricos.
+            codigo_iva:
+              type: string
+              description: codigo iva.
+            iva_exento:
+              type: boolean
+              nullable: true
+              description: iva exento.
+            iva_no_gravado:
+              type: boolean
+              nullable: true
+              description: iva no gravado.
+          required:
+          - descripcion
+          - cantidad
+          - precio_unitario
+          - subtotal
+          - monto_iva
+          - total
+          description: ItemHistorico.
+        DatosDocumentalesHistoricos:
+          type: object
+          additionalProperties: false
+          properties:
+            razon_social_emisor:
+              type: string
+              description: razon social emisor.
+              nullable: true
+            domicilio_emisor:
+              type: string
+              description: domicilio emisor.
+              nullable: true
+            condicion_fiscal_emisor:
+              type: string
+              description: condicion fiscal emisor.
+              nullable: true
+            fecha_inicio_actividad_emisor:
+              type: string
+              description: fecha inicio actividad emisor.
+              nullable: true
+            nombre_receptor:
+              type: string
+              description: nombre receptor.
+              nullable: true
+            domicilio_receptor:
+              type: string
+              description: domicilio receptor.
+              nullable: true
+            condicion_fiscal_receptor:
+              type: string
+              description: condicion fiscal receptor.
+              nullable: true
+            metodo_pago:
+              type: string
+              description: metodo pago.
+              nullable: true
+            email_receptor:
+              type: string
+              description: email receptor.
+              nullable: true
+            telefono_receptor:
+              type: string
+              description: telefono receptor.
+              nullable: true
+          description: DatosDocumentalesHistoricos.
+        DetalleHistoricoFactura:
+          type: object
+          additionalProperties: false
+          properties:
+            items:
+              type: array
+              maxItems: 1000
+              items:
+                $ref: '#/components/schemas/ItemHistorico'
+              description: items.
+              nullable: true
+            datos_documentales:
+              allOf:
+              - $ref: '#/components/schemas/DatosDocumentalesHistoricos'
+              nullable: true
+              description: Dato opcional, ausente cuando no consta.
+          description: DetalleHistoricoFactura.
+        SolicitudImportarFactura:
+          type: object
+          additionalProperties: false
+          properties:
+            factura:
+              $ref: '#/components/schemas/FacturaHistorica'
+            procedencia:
+              $ref: '#/components/schemas/ProcedenciaFactura'
+            detalle:
+              allOf:
+              - $ref: '#/components/schemas/DetalleHistoricoFactura'
+              nullable: true
+              description: Datos comerciales/documentales del cliente, conservados con procedencia;
+                ARCA no verifica ítems, nombres ni domicilios históricos.
+          required:
+          - factura
+          - procedencia
+          description: SolicitudImportarFactura.
+        CuerpoSolicitudImportarFactura:
+          type: object
+          additionalProperties: false
+          properties:
+            data:
+              $ref: '#/components/schemas/SolicitudImportarFactura'
+          required:
+          - data
+          description: CuerpoSolicitudImportarFactura.
+        VerificacionImportacion:
+          type: object
+          additionalProperties: false
+          properties:
+            metodo:
+              type: string
+              enum:
+              - wsfe.FECompConsultar
+              description: metodo.
+            verificado_at:
+              type: string
+              format: date-time
+              description: verificado at.
+          required:
+          - metodo
+          - verificado_at
+          description: VerificacionImportacion.
+        CompletitudDocumental:
+          type: object
+          additionalProperties: false
+          properties:
+            tiene_items:
+              type: boolean
+              description: tiene items.
+            tiene_datos_documentales:
+              type: boolean
+              description: tiene datos documentales.
+            pdf_regenerable:
+              type: boolean
+              enum:
+              - false
+              description: Siempre false en V1. La conservación del detalle histórico no habilita
+                el renderizador que utiliza fichas actuales.
+            motivos:
+              type: array
+              items:
+                type: string
+                description: motivos item.
+              description: motivos.
+          required:
+          - tiene_items
+          - tiene_datos_documentales
+          - pdf_regenerable
+          - motivos
+          description: V1 conserva los datos aportados pero no regenera documentos históricos
+            con el renderizador actual. Esa operación falla explícitamente y nunca envía correo
+            ni emite.
+        RespuestaImportarFactura:
+          type: object
+          additionalProperties: false
+          properties:
+            documento_id:
+              type: string
+              format: uuid
+              description: documento id.
+            importado:
+              type: boolean
+              description: importado.
+            ya_existia:
+              type: boolean
+              description: ya existia.
+            verificacion:
+              $ref: '#/components/schemas/VerificacionImportacion'
+            documento:
+              $ref: '#/components/schemas/RespuestaFacturaPersistida'
+          required:
+          - documento_id
+          - importado
+          - ya_existia
+          - verificacion
+          - documento
+          description: RespuestaImportarFactura.
         RespuestaFacturaPersistida:
             type: object
             description: Datos realmente persistidos. No incorpora fichas mutables de cliente, snapshots históricos inexistentes,
@@ -4338,6 +5100,11 @@ components:
                     - api
                     - web
                     - recurrente
+                    - legacy_import
+                verificacion:
+                    $ref: "#/components/schemas/VerificacionImportacion"
+                completitud_documental:
+                    $ref: "#/components/schemas/CompletitudDocumental"
                 external_reference:
                     type: string
                 factura:
@@ -6521,7 +7288,7 @@ components:
                     enum: [pendiente, autorizado, error]
                 origen:
                     type: string
-                    enum: [api, web, recurrente]
+                    enum: [api, web, recurrente, legacy_import]
                 usuario_id:
                     type: string
                     format: uuid
@@ -6587,7 +7354,7 @@ components:
                     enum: [pendiente, autorizado, error]
                 origen:
                     type: string
-                    enum: [api, web, recurrente]
+                    enum: [api, web, recurrente, legacy_import]
                 usuario_id:
                     type: string
                     format: uuid
@@ -6658,6 +7425,8 @@ components:
             type: object
             required: [factura_id, items, comprobantes_asociados, alicuotas_iva, tributos]
             properties:
+                historico:
+                    $ref: "#/components/schemas/DatosFiscalesHistoricos"
                 factura_id:
                     type: string
                     format: uuid

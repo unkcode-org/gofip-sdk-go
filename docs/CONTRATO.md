@@ -2,13 +2,14 @@
 
 - Repositorio canónico: unkcode-org/gofip-backend.
 - Archivo: backend/docs/openapi.yaml.
-- Versión: 2.18.0.
-- Commit de implementación: ed68c3a3e0e664e8b8ebeda7a8fff20eb1b60aea.
-- Base auditada de develop: 12581b385b4fc7321334e4442493ef0159f8a612.
-- SHA-256 de los bytes YAML copiados: 90d2171d496a0984e80e835fdfa86ee124bfeee49d472d2d8d74bb02467021e4.
+- Versión: 2.19.0.
+- Commit de implementación: 7918e9d373a8cbc298258cb9314d5d33e54d38b3.
+- Base auditada de develop: ea7beffef41a91e548a1e7b8ed17e388fdd948da.
+- SHA-256 de los bytes YAML copiados: 82ed564929b6c46e608d7922dc0a4fb93e1f4e1c2d8ec7bc06d434b4975d92b1.
 
-La copia se verificó byte a byte. El formato del SDK local anterior se respaldó
-antes de reemplazarlo; sus rutas y schemas se habían contrastado con el backend.
-Para actualizar, editar primero el contrato canónico, su versión y changelog;
-verificar el backend y copiar el archivo exacto al SDK. No editar esta copia como
-fuente independiente. El commit de implementación todavía no implica un despliegue.
+La copia se verificó byte a byte después de estabilizar Backend/OpenAPI. Incluye
+importación Legacy verificada en Producción y no agrega ambiente a documentos o
+identidad fiscal. Para actualizar, editar primero el contrato canónico, su versión
+y changelog; verificar el backend y copiar el archivo exacto al SDK. No editar
+esta copia como fuente independiente. El commit de implementación no implica un
+despliegue, release ni importación real.
