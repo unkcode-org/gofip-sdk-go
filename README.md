@@ -10,13 +10,13 @@ de errores HTTP y la descarga de documentos.
 | Componente | Versión usada |
 | --- | --- |
 | Módulo Go | `v2` (`github.com/unkcode-org/gofip-sdk-go/v2`) |
-| API GOFIP | `2.19.0` y rutas bajo `/api/v2` |
+| API GOFIP | `3.0.0` y rutas bajo `/api/v2` |
 | Especificación OpenAPI | `3.0.3` |
 | Go | `1.22.2` o posterior |
 
 El contrato HTTP de referencia está en
 [`docs/openapi.yaml`](docs/openapi.yaml). Los campos `openapi: 3.0.3` e
-`info.version: "2.19.0"` indican, respectivamente, la versión del formato OpenAPI
+`info.version: "3.0.0"` indican, respectivamente, la versión del formato OpenAPI
 y la versión del contrato de la API. No deben confundirse con una versión
 publicada del módulo Go.
 
@@ -353,7 +353,6 @@ clienteSEP, err := gofip.NuevoClienteSEP(gofip.OpcionesClienteSEP{
 })
 if err != nil { return err }
 solicitud := sepmodel.SolicitudCrearSesionEmbedded{
-    IDEmisorExterno: "elixir",
     Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer},
 }
 sesion, err := clienteSEP.CrearSesion(ctx, solicitud)
@@ -412,6 +411,8 @@ go test -race ./...
 ```
 
 Ver [arquitectura](docs/arquitectura.md) y [validación manual](docs/validacion.md).
-El contrato de referencia es OpenAPI 2.19.0 del backend. No se publica una versión
+El contrato de referencia es OpenAPI 3.0.0 del backend. No se publica una versión
 como parte de estas pruebas. La secuencia prevista es `v2.0.0-rc.1` → `v2.0.0`,
 con imports `/v2`, validación externa y aprobación de publicación.
+
+SEP deriva el emisor exclusivamente de la Integration Key. CrearSesion y CrearBootstrap reciben solo permisos; la integración pertenece a un único emisor.

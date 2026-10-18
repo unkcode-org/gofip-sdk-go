@@ -35,7 +35,7 @@ func TestPermisosExactosYValidacionSinMutaciones(t *testing.T) {
 		t.Fatal("inventario incorrecto")
 	}
 	for _, p := range permisos {
-		s := SolicitudCrearSesionEmbedded{IDEmisorExterno: strings.Repeat("ñ", 191), Permisos: []PermisoEmbedded{p}}
+		s := SolicitudCrearSesionEmbedded{Permisos: []PermisoEmbedded{p}}
 		if err := s.Validar(); err != nil {
 			t.Fatal(err)
 		}

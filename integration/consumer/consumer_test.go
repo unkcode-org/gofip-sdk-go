@@ -81,7 +81,7 @@ func TestConsumidorV2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	solicitud := sepmodel.SolicitudCrearSesionEmbedded{IDEmisorExterno: "elixir", Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
+	solicitud := sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
 	sesion, err := sep.CrearSesion(ctx, solicitud)
 	if err != nil {
 		t.Fatal(err)

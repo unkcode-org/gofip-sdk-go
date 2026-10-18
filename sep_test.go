@@ -23,7 +23,7 @@ const tokenSEPPrueba = "gofip_emb_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const urlDocumentoSEPPrueba = "https://embedded.example/embed/capacidad-privada"
 
 func solicitudSEPPrueba() sepmodel.SolicitudCrearSesionEmbedded {
-	return sepmodel.SolicitudCrearSesionEmbedded{IDEmisorExterno: "elixir", Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
+	return sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
 }
 
 func TestNuevoClienteSEPConfiguracion(t *testing.T) {
@@ -78,7 +78,7 @@ func TestSEPCreacionYRecuperacionContrato(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
 			t.Fatal(err)
 		}
-		if len(b.Data) != 2 || string(b.Data["external_emisor_id"]) != `"elixir"` || string(b.Data["permissions"]) != `["invoices:read"]` {
+		if len(b.Data) != 1 || string(b.Data["permissions"]) != `["invoices:read"]` {
 			t.Error("payload incorrecto")
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -147,9 +147,8 @@ func TestSEPValidaPermisosAntesDeEnviar(t *testing.T) {
 	})}
 	c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: "https://example.test", ClienteHTTP: httpClient})
 	for _, s := range []sepmodel.SolicitudCrearSesionEmbedded{
-		{}, {IDEmisorExterno: "elixir"}, {IDEmisorExterno: "elixir", Permisos: []sepmodel.PermisoEmbedded{"inventado"}},
-		{IDEmisorExterno: "elixir", Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer, sepmodel.PermisoFacturasLeer}},
-		{IDEmisorExterno: strings.Repeat("a", 192), Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}},
+		{}, {Permisos: []sepmodel.PermisoEmbedded{"inventado"}},
+		{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer, sepmodel.PermisoFacturasLeer}},
 	} {
 		if _, err := c.CrearSesion(context.Background(), s); err == nil {
 			t.Fatal("solicitud inválida aceptada")

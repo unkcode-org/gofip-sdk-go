@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 type PermisoEmbedded string
@@ -50,16 +48,12 @@ func (s *Secreto) UnmarshalJSON(b []byte) error {
 }
 
 type SolicitudCrearSesionEmbedded struct {
-	IDEmisorExterno string            `json:"external_emisor_id"`
-	Permisos        []PermisoEmbedded `json:"permissions"`
+	Permisos []PermisoEmbedded `json:"permissions"`
 }
 
-// Validar no cambia el identificador ni el orden de los permisos. El techo de
+// Validar no cambia el orden de los permisos. El techo de
 // autorización pertenece al backend y no puede verificarse localmente.
 func (s SolicitudCrearSesionEmbedded) Validar() error {
-	if !utf8.ValidString(s.IDEmisorExterno) || strings.TrimSpace(s.IDEmisorExterno) == "" || utf8.RuneCountInString(s.IDEmisorExterno) > 191 {
-		return errors.New("el identificador externo debe tener entre 1 y 191 caracteres")
-	}
 	if len(s.Permisos) == 0 {
 		return errors.New("se requiere al menos un permiso Embedded")
 	}

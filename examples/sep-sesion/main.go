@@ -16,13 +16,9 @@ func main() {
 	if err != nil {
 		log.Fatal("configuración SEP inválida")
 	}
-	emisor := os.Getenv("GOFIP_SEP_EMISOR_EXTERNO")
-	if emisor == "" {
-		log.Fatal("falta GOFIP_SEP_EMISOR_EXTERNO")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	respuesta, err := c.CrearSesion(ctx, sepmodel.SolicitudCrearSesionEmbedded{IDEmisorExterno: emisor, Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}})
+	respuesta, err := c.CrearSesion(ctx, sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}})
 	if err != nil {
 		log.Fatal("no se pudo completar la operación SEP")
 	}
