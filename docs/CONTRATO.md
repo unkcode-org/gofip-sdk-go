@@ -2,10 +2,11 @@
 
 - Repositorio canónico: unkcode-org/gofip-backend.
 - Archivo: backend/docs/openapi.yaml.
-- Versión: 2.19.0.
-- Commit de implementación: 7918e9d373a8cbc298258cb9314d5d33e54d38b3.
-- Base auditada de develop: ea7beffef41a91e548a1e7b8ed17e388fdd948da.
-- SHA-256 de los bytes YAML copiados: 82ed564929b6c46e608d7922dc0a4fb93e1f4e1c2d8ec7bc06d434b4975d92b1.
+- Versión: 3.0.0.
+- Commit de implementación SEP en backend: 0fbb4e9f60b61eb2857b259b5766bbcec99d5a8b.
+- Rama de revisión: codex/sep-emisor-directo.
+- Base auditada de develop: dae24d3.
+- SHA-256 de los bytes YAML copiados: b9580c0245564ce8cf3d11930b36650b8b6e8934b3910c492b4c9a5ae0557238.
 
 La copia se verificó byte a byte después de estabilizar Backend/OpenAPI. Incluye
 importación Legacy verificada en Producción y no agrega ambiente a documentos o

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
     title: GO ARCA API
-    version: "2.19.0"
+    version: "3.0.0"
     description: >-
         API REST para gestión de emisores, puntos de venta, credenciales API y
         facturación electrónica con ARCA. Todos los cuerpos JSON de entrada usan el
@@ -42,7 +42,7 @@ tags:
     - name: Admin
       description: Operaciones globales reservadas a usuarios con permisos administrativos.
     - name: Integraciones Embedded
-      description: Administración de clientes externos, mapeos de emisores y credenciales M2M para la futura superficie Embedded.
+      description: Administración de integraciones de un único emisor y credenciales M2M para la futura superficie Embedded.
     - name: API Embedded
       description: Operaciones de navegador autenticadas exclusivamente mediante Authorization EmbeddedSession y acotadas al emisor de la sesión.
     - name: ARCA Catálogos
@@ -304,7 +304,7 @@ paths:
           - Integraciones SEP
         operationId: listarIntegracionesSEP
         summary: Lista Integraciones SEP
-        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. "
+        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. "
         security:
           - CookieAuth: []
         parameters:
@@ -352,7 +352,7 @@ paths:
           - Integraciones SEP
         operationId: crearIntegracionSEP
         summary: Crea una Integración SEP
-        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. Crea desactivada, sin permisos, y asocia automáticamente el emisor. No acepta IDs de ownership. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. "
+        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Crea desactivada, sin permisos, y asocia automáticamente el emisor. No acepta IDs de ownership. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. "
         security:
           - CookieAuth: []
         parameters:
@@ -394,7 +394,7 @@ paths:
           - Integraciones SEP
         operationId: obtenerIntegracionSEP
         summary: Obtiene una Integración SEP
-        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. "
+        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. "
         security:
           - CookieAuth: []
         parameters:
@@ -436,7 +436,7 @@ paths:
           - Integraciones SEP
         operationId: actualizarIntegracionSEP
         summary: Actualiza una Integración SEP
-        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
+        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
         security:
           - CookieAuth: []
         parameters:
@@ -485,7 +485,7 @@ paths:
           - Integraciones SEP
         operationId: actualizarPermisosSEP
         summary: Reemplaza los permisos de la integración
-        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
+        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
         security:
           - CookieAuth: []
         parameters:
@@ -534,7 +534,7 @@ paths:
           - Integraciones SEP
         operationId: listarCredencialesSEP
         summary: Lista credenciales de la integración
-        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. "
+        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. "
         security:
           - CookieAuth: []
         parameters:
@@ -589,7 +589,7 @@ paths:
           - Integraciones SEP
         operationId: crearCredencialSEP
         summary: Crea una credencial de integración
-        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. "
+        description: "Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. "
         security:
           - CookieAuth: []
         parameters:
@@ -644,7 +644,7 @@ paths:
           - Integraciones SEP
         operationId: revocarCredencialSEP
         summary: Revoca una credencial de integración
-        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP con mapping canónico único; los clientes globales no son accesibles. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
+        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
         security:
           - CookieAuth: []
         parameters:
@@ -3082,66 +3082,6 @@ paths:
                 "404": {$ref: "#/components/responses/Error"}
                 "500": {$ref: "#/components/responses/Error"}
 
-    /api/v2/admin/integration-clients/{integration-client-id}/emisor-mappings:
-        get:
-            tags: [Integraciones Embedded]
-            operationId: listarMapeosEmisorIntegracion
-            summary: Lista mapeos de emisores
-            description: Devuelve únicamente mapeos del cliente padre, incluida la autorización Embedded máxima de cada emisor.
-            security: [{CookieAuth: []}]
-            parameters: [{$ref: "#/components/parameters/IdClienteIntegracion"}]
-            responses:
-                "200":
-                    description: Mapeos del cliente
-                    content:
-                        application/json:
-                            schema: {$ref: "#/components/schemas/RespuestaMapeosIntegracion"}
-                "401": {$ref: "#/components/responses/Error"}
-                "403": {$ref: "#/components/responses/Error"}
-                "404": {$ref: "#/components/responses/Error"}
-                "500": {$ref: "#/components/responses/Error"}
-        post:
-            tags: [Integraciones Embedded]
-            operationId: crearMapeoEmisorIntegracion
-            summary: Crea un mapeo de emisor
-            description: Asocia un identificador externo único con un emisor GOFIP y persiste su techo de permisos Embedded cerrado.
-            security: [{CookieAuth: []}]
-            parameters: [{$ref: "#/components/parameters/IdClienteIntegracion"}]
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema: {$ref: "#/components/schemas/CuerpoSolicitudCrearMapeoIntegracion"}
-            responses:
-                "201":
-                    description: Mapeo creado
-                    content:
-                        application/json:
-                            schema: {$ref: "#/components/schemas/MapeoEmisorIntegracion"}
-                "400": {$ref: "#/components/responses/Error"}
-                "401": {$ref: "#/components/responses/Error"}
-                "403": {$ref: "#/components/responses/Error"}
-                "404": {$ref: "#/components/responses/Error"}
-                "409": {$ref: "#/components/responses/Error"}
-                "500": {$ref: "#/components/responses/Error"}
-
-    /api/v2/admin/integration-clients/{integration-client-id}/emisor-mappings/{mapping-id}:
-        delete:
-            tags: [Integraciones Embedded]
-            operationId: eliminarMapeoEmisorIntegracion
-            summary: Elimina un mapeo de emisor
-            description: Elimina el mapeo parent-scoped y sus permisos por cascada, sin eliminar el emisor GOFIP.
-            security: [{CookieAuth: []}]
-            parameters:
-                - {$ref: "#/components/parameters/IdClienteIntegracion"}
-                - {$ref: "#/components/parameters/IdMapeoIntegracion"}
-            responses:
-                "204": {description: Mapeo y permisos eliminados}
-                "401": {$ref: "#/components/responses/Error"}
-                "403": {$ref: "#/components/responses/Error"}
-                "404": {$ref: "#/components/responses/Error"}
-                "500": {$ref: "#/components/responses/Error"}
-
     /api/v2/embedded/bootstrap/exchange:
         post:
             tags: [Integraciones Embedded]
@@ -3183,7 +3123,7 @@ paths:
             tags: [Integraciones Embedded]
             operationId: crearBootstrapEmbedded
             summary: Crea un bootstrap de recuperación Embedded
-            description: Autentica exclusivamente la IntegrationKey y vuelve a resolver el mapeo confiable de emisor y el techo de permisos. No acepta Document Capability, no crea un documento y no crea una sesión de navegador.
+            description: Autentica exclusivamente la IntegrationKey y vuelve a resolver el emisor y el techo de permisos de la integración autenticada. No acepta Document Capability, no crea un documento y no crea una sesión de navegador.
             security: [{IntegrationKeyAuth: []}]
             requestBody:
                 required: true
@@ -3211,8 +3151,7 @@ paths:
             summary: Crea un bootstrap Embedded de un solo uso
             description: >-
                 Autentica exclusivamente una IntegrationKey M2M con el alcance
-                `embedded_session:create`. El emisor GOFIP se resuelve únicamente desde
-                `external_emisor_id` dentro del cliente autenticado; nunca enviar `emisor_id`
+                `embedded_session:create`. El emisor GOFIP se obtiene exclusivamente de la integración autenticada; nunca enviar `emisor_id`
                 ni `integration_client_id`. `bootstrap_token` es secreto, se devuelve una sola
                 vez, vence pronto y se canjea una sola vez mediante
                 `POST /api/v2/embedded/bootstrap/exchange`; aún no representa una sesión de navegador.
@@ -4155,12 +4094,6 @@ components:
             in: path
             required: true
             description: UUIDv7 de una credencial M2M perteneciente al cliente de integración padre.
-            schema: {type: string, format: uuid}
-        IdMapeoIntegracion:
-            name: mapping-id
-            in: path
-            required: true
-            description: UUIDv7 de un mapeo de emisor perteneciente al cliente de integración padre.
             schema: {type: string, format: uuid}
         IdSesionWhatsApp:
             name: sesion-id
@@ -5126,7 +5059,6 @@ components:
             - allowed_origin
             - status
             - permissions
-            - reference
             - created_at
             - updated_at
           properties:
@@ -5151,10 +5083,6 @@ components:
               uniqueItems: true
               items:
                 $ref: "#/components/schemas/PermisoEmbedded"
-            reference:
-              type: string
-              description: Referencia pública estable generada por GOFIP.
-              readOnly: true
             created_at: &a1
               type: string
               description: Fecha de creación.
@@ -5311,7 +5239,7 @@ components:
             enum: ["embedded_session:create"]
         PermisoEmbedded:
             type: string
-            description: Capacidad máxima que una futura sesión Embedded podrá solicitar para el mapeo de emisor.
+            description: Capacidad máxima que una futura sesión Embedded podrá solicitar para la integración.
             enum:
                 - "invoices:read"
                 - "invoices:create"
@@ -5329,14 +5257,12 @@ components:
             type: string
             description: >-
                 Código estable de Embedded: 18000 cliente no encontrado; 18001 cliente deshabilitado;
-                18002 origen inválido; 18003 datos de cliente inválidos; 18004 mapeo no encontrado;
-                18005 ID externo duplicado; 18006 emisor duplicado para el cliente; 18007 datos de
-                mapeo inválidos; 18008 credencial no encontrada; 18009 credencial revocada; 18010
+                18002 origen inválido; 18003 datos de cliente inválidos; 18008 credencial no encontrada; 18009 credencial revocada; 18010
                 credencial vencida; 18011 credencial inválida; 18012 datos de credencial inválidos;
                 18013 alcance inválido; 18014 alcance requerido ausente; 18015 permiso Embedded inválido;
                 18016 solicitud de bootstrap inválida; 18017 permiso no autorizado; 18018 bootstrap no disponible;
                 18019 fallo de persistencia del bootstrap.
-            enum: ["18000", "18001", "18002", "18003", "18004", "18005", "18006", "18007", "18008", "18009", "18010", "18011", "18012", "18013", "18014", "18015", "18016", "18017", "18018", "18019"]
+            enum: ["18000", "18001", "18002", "18003", "18008", "18009", "18010", "18011", "18012", "18013", "18014", "18015", "18016", "18017", "18018", "18019"]
         DetallesErrorIntegracionEmbedded:
             allOf:
                 - {$ref: "#/components/schemas/DetallesError"}
@@ -5346,9 +5272,11 @@ components:
                       code: {$ref: "#/components/schemas/CodigoErrorIntegracionEmbedded"}
         ClienteIntegracion:
             type: object
-            required: [id, name, status, allowed_origin, created_at, updated_at]
+            required: [id, emisor_id, permissions, name, status, allowed_origin, created_at, updated_at]
             properties:
                 id: {type: string, format: uuid, description: UUIDv7 del cliente de integración.}
+                emisor_id: {type: string, format: uuid, description: Emisor propietario inmutable.}
+                permissions: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/PermisoEmbedded"}, description: Techo de permisos de la integración.}
                 name: {type: string, description: Nombre administrativo de la plataforma externa.}
                 status: {$ref: "#/components/schemas/EstadoClienteIntegracion"}
                 allowed_origin: {type: string, format: uri, description: "Origen exacto reservado para la futura política de embedding; nunca incluye ruta, consulta, fragmento ni comodín."}
@@ -5368,9 +5296,10 @@ components:
             properties:
                 data:
                     type: object
-                    description: Datos del nuevo cliente de integración.
-                    required: [name, allowed_origin]
+                    description: Datos del nuevo cliente de integración, asociado a un único emisor.
+                    required: [emisor_id, name, allowed_origin]
                     properties:
+                        emisor_id: {type: string, format: uuid, description: Emisor propietario elegido por el administrador al crear la integración.}
                         name: {type: string, minLength: 1, maxLength: 120, description: Nombre administrativo de la plataforma externa.}
                         allowed_origin: {type: string, format: uri, description: "Origen HTTP(S) exacto sin path, query, fragmento ni comodín."}
         CuerpoSolicitudActualizarClienteIntegracion:
@@ -5380,50 +5309,12 @@ components:
                 data:
                     type: object
                     minProperties: 1
-                    description: Campos administrativos a modificar.
+                    description: Campos administrativos a modificar. El emisor propietario es inmutable.
                     properties:
                         name: {type: string, minLength: 1, maxLength: 120, description: Nuevo nombre administrativo.}
                         status: {$ref: "#/components/schemas/EstadoClienteIntegracion"}
                         allowed_origin: {type: string, format: uri, description: "Nuevo origen HTTP(S) exacto sin path, query, fragmento ni comodín."}
-        MapeoEmisorIntegracion:
-            type: object
-            required: [id, integration_client_id, emisor_id, external_emisor_id, permissions, created_at, updated_at]
-            properties:
-                id: {type: string, format: uuid, description: UUIDv7 del mapeo.}
-                integration_client_id: {type: string, format: uuid, description: Cliente de integración propietario.}
-                emisor_id: {type: string, format: uuid, description: Emisor GOFIP resuelto exclusivamente en el backend.}
-                external_emisor_id: {type: string, description: Identificador estable usado por la plataforma externa.}
-                permissions:
-                    type: array
-                    uniqueItems: true
-                    description: Techo persistido de permisos de la futura sesión Embedded para este mapeo.
-                    items: {$ref: "#/components/schemas/PermisoEmbedded"}
-                created_at: {type: string, format: date-time, description: Fecha de creación.}
-                updated_at: {type: string, format: date-time, description: Fecha de última actualización.}
-        RespuestaMapeosIntegracion:
-            type: object
-            required: [emisor_mappings]
-            properties:
-                emisor_mappings:
-                    type: array
-                    description: Mapeos pertenecientes al cliente solicitado.
-                    items: {$ref: "#/components/schemas/MapeoEmisorIntegracion"}
-        CuerpoSolicitudCrearMapeoIntegracion:
-            type: object
-            required: [data]
-            properties:
-                data:
-                    type: object
-                    description: Asociación y autorización máxima del emisor externo.
-                    required: [emisor_id, external_emisor_id, permissions]
-                    properties:
-                        emisor_id: {type: string, format: uuid, description: Emisor GOFIP existente que se asociará.}
-                        external_emisor_id: {type: string, minLength: 1, maxLength: 191, description: Identificador del emisor en la plataforma externa.}
-                        permissions:
-                            type: array
-                            uniqueItems: true
-                            description: Techo cerrado de permisos Embedded para este emisor; no se deriva de los alcances M2M.
-                            items: {$ref: "#/components/schemas/PermisoEmbedded"}
+                        permissions: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/PermisoEmbedded"}, description: Nuevo techo de permisos de la integración.}
         CredencialIntegracion:
             type: object
             required: [id, integration_client_id, secret_prefix, status, scopes, created_at, updated_at]
@@ -5437,7 +5328,7 @@ components:
                 scopes:
                     type: array
                     uniqueItems: true
-                    description: Alcances M2M de la credencial; son independientes de los permisos Embedded del mapeo.
+                    description: Alcances M2M de la credencial; son independientes de los permisos Embedded de la integración.
                     items: {$ref: "#/components/schemas/AlcanceIntegracion"}
                 created_at: {type: string, format: date-time, description: Fecha de creación.}
                 updated_at: {type: string, format: date-time, description: Fecha de última actualización.}
@@ -5466,6 +5357,7 @@ components:
         CuerpoSolicitudCrearSesionEmbedded:
             type: object
             required: [data]
+            additionalProperties: false
             properties:
                 data:
                     $ref: "#/components/schemas/SolicitudCrearSesionEmbedded"
@@ -5487,19 +5379,14 @@ components:
                     description: Capacidad opaca, breve y de un único uso. Enviar sólo en este cuerpo POST; no usar query parameters.
         SolicitudCrearSesionEmbedded:
             type: object
-            required: [external_emisor_id, permissions]
+            required: [permissions]
             additionalProperties: false
             properties:
-                external_emisor_id:
-                    type: string
-                    minLength: 1
-                    maxLength: 191
-                    description: Identificador del emisor en el ERP. GOFIP lo resuelve sólo dentro del cliente autenticado.
                 permissions:
                     type: array
                     minItems: 1
                     uniqueItems: true
-                    description: Permisos exactos solicitados para la futura sesión; deben ser subconjunto del techo del mapeo.
+                    description: Permisos exactos solicitados para la futura sesión; deben ser subconjunto del techo de la integración.
                     items: {$ref: "#/components/schemas/PermisoEmbedded"}
         RespuestaCrearSesionEmbedded:
             type: object

@@ -22,10 +22,10 @@ func TestContratoImportacionYProcedenciaExacta(t *testing.T) {
 		t.Fatal(err)
 	}
 	hash := fmt.Sprintf("%x", sha256.Sum256(yaml))
-	if !strings.Contains(string(provenance), hash) || !strings.Contains(string(provenance), "Versión: 2.19.0.") {
+	if !strings.Contains(string(provenance), hash) || !strings.Contains(string(provenance), "Versión: 3.0.0.") {
 		t.Fatal("copia OpenAPI sin procedencia o checksum actualizado")
 	}
-	for _, token := range []string{`version: "2.19.0"`, "/api/v2/facturas/importaciones:", "mismo emisor y punto de venta", "emisor_id+credencial_id+punto_venta_id", "legacy_import", "SolicitudImportarFactura:", "RespuestaImportarFactura:", "DecimalHistorico:", "VerificacionImportacion:", "CompletitudDocumental:"} {
+	for _, token := range []string{`version: "3.0.0"`, "/api/v2/facturas/importaciones:", "mismo emisor y punto de venta", "emisor_id+credencial_id+punto_venta_id", "legacy_import", "SolicitudImportarFactura:", "RespuestaImportarFactura:", "DecimalHistorico:", "VerificacionImportacion:", "CompletitudDocumental:"} {
 		if !strings.Contains(string(yaml), token) {
 			t.Fatalf("contrato sin %s", token)
 		}
