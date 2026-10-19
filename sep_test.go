@@ -14,17 +14,11 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
 )
 
 const claveSEPPrueba = "gofip_int_public_secreto-privado"
 const tokenSEPPrueba = "gofip_emb_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const urlDocumentoSEPPrueba = "https://embedded.example/embed/capacidad-privada"
-
-func solicitudSEPPrueba() sepmodel.SolicitudCrearSesionEmbedded {
-	return sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
-}
 
 func TestNuevoClienteSEPConfiguracion(t *testing.T) {
 	for _, o := range []OpcionesClienteSEP{
@@ -69,17 +63,12 @@ func TestSEPCreacionYRecuperacionContrato(t *testing.T) {
 		if r.Header.Get("Cookie") != "" || r.Header.Get("X-ARCA-Ambiente") != "" {
 			t.Error("SEP mezcló autenticaciones o ambiente")
 		}
-		if r.Header.Get("Accept") != "application/json" || r.Header.Get("Content-Type") != "application/json" {
+		if r.Header.Get("Accept") != "application/json" || r.Header.Get("Content-Type") != "" {
 			t.Error("cabeceras JSON")
 		}
-		var b struct {
-			Data map[string]json.RawMessage `json:"data"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
-			t.Fatal(err)
-		}
-		if len(b.Data) != 1 || string(b.Data["permissions"]) != `["invoices:read"]` {
-			t.Error("payload incorrecto")
+		b, err := io.ReadAll(r.Body)
+		if err != nil || len(b) != 0 || r.URL.RawQuery != "" {
+			t.Error("emisión SEP debe tener cuerpo y query vacíos")
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -105,14 +94,14 @@ func TestSEPCreacionYRecuperacionContrato(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sesion, err := c.CrearSesion(context.Background(), solicitudSEPPrueba())
+	sesion, err := c.CrearSesion(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sesion.Datos.TokenBootstrap.Valor() != tokenSEPPrueba || sesion.Datos.URLDocumento.Valor() != urlDocumentoSEPPrueba || sesion.Datos.ExpiraDocumentoEn.Year() != 2026 {
 		t.Fatal("respuesta incorrecta")
 	}
-	bootstrap, err := c.CrearBootstrap(context.Background(), solicitudSEPPrueba())
+	bootstrap, err := c.CrearBootstrap(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,29 +128,6 @@ func TestSEPCreacionYRecuperacionContrato(t *testing.T) {
 	}
 }
 
-func TestSEPValidaPermisosAntesDeEnviar(t *testing.T) {
-	var llamadas atomic.Int32
-	httpClient := &http.Client{Transport: roundTripperPrueba(func(r *http.Request) (*http.Response, error) {
-		llamadas.Add(1)
-		return nil, errors.New("no debe llamarse")
-	})}
-	c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: "https://example.test", ClienteHTTP: httpClient})
-	for _, s := range []sepmodel.SolicitudCrearSesionEmbedded{
-		{}, {Permisos: []sepmodel.PermisoEmbedded{"inventado"}},
-		{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer, sepmodel.PermisoFacturasLeer}},
-	} {
-		if _, err := c.CrearSesion(context.Background(), s); err == nil {
-			t.Fatal("solicitud inválida aceptada")
-		}
-		if _, err := c.CrearBootstrap(context.Background(), s); err == nil {
-			t.Fatal("solicitud inválida aceptada")
-		}
-	}
-	if llamadas.Load() != 0 {
-		t.Fatal("se envió solicitud inválida")
-	}
-}
-
 func TestSEPErroresRedactadosSinReintentos(t *testing.T) {
 	for _, status := range []int{400, 401, 403, 404, 500, 302} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
@@ -174,7 +140,7 @@ func TestSEPErroresRedactadosSinReintentos(t *testing.T) {
 			}))
 			defer servidor.Close()
 			c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: servidor.URL, ClienteHTTP: servidor.Client()})
-			_, err := c.CrearSesion(context.Background(), solicitudSEPPrueba())
+			_, err := c.CrearSesion(context.Background())
 			if err == nil {
 				t.Fatal("falta error")
 			}
@@ -201,12 +167,12 @@ func TestSEPCancelacionDeadlineYTransporte(t *testing.T) {
 	c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: s.URL, ClienteHTTP: s.Client()})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := c.CrearSesion(ctx, solicitudSEPPrueba()); !errors.Is(err, context.Canceled) {
+	if _, err := c.CrearSesion(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelación %v", err)
 	}
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	if _, err := c.CrearBootstrap(ctx, solicitudSEPPrueba()); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := c.CrearBootstrap(ctx); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("deadline %v", err)
 	}
 	var llamadas atomic.Int32
@@ -214,7 +180,7 @@ func TestSEPCancelacionDeadlineYTransporte(t *testing.T) {
 		llamadas.Add(1)
 		return nil, fmt.Errorf("fallo con %s", claveSEPPrueba)
 	})}})
-	_, err := c.CrearBootstrap(context.Background(), solicitudSEPPrueba())
+	_, err := c.CrearBootstrap(context.Background())
 	if err == nil || strings.Contains(err.Error(), claveSEPPrueba) || llamadas.Load() != 1 {
 		t.Fatal("error transporte inseguro o reintentos")
 	}
@@ -225,14 +191,14 @@ func TestSEPRespuestaInvalidaYErrorHTTP(t *testing.T) {
 		c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: "https://example.test", ClienteHTTP: &http.Client{Transport: roundTripperPrueba(func(r *http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 201, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header), Request: r}, nil
 		})}})
-		if _, err := c.CrearBootstrap(context.Background(), solicitudSEPPrueba()); err == nil || strings.Contains(err.Error(), "secreto-malformado") {
+		if _, err := c.CrearBootstrap(context.Background()); err == nil || strings.Contains(err.Error(), "secreto-malformado") {
 			t.Fatal("respuesta inválida o error inseguro")
 		}
 	}
 	c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: "https://example.test", ClienteHTTP: &http.Client{Transport: roundTripperPrueba(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 502, Body: io.NopCloser(strings.NewReader(claveSEPPrueba + tokenSEPPrueba)), Header: make(http.Header)}, nil
 	})}})
-	_, err := c.CrearBootstrap(context.Background(), solicitudSEPPrueba())
+	_, err := c.CrearBootstrap(context.Background())
 	var httpErr *ErrorHTTP
 	if !errors.As(err, &httpErr) || httpErr.Estado != 502 || strings.Contains(httpErr.Cuerpo, claveSEPPrueba) {
 		t.Fatal("error HTTP inseguro")
@@ -250,7 +216,7 @@ func TestSEPDeadlineDuranteLecturaDelCuerpo(t *testing.T) {
 	c, _ := NuevoClienteSEP(OpcionesClienteSEP{ClaveIntegracion: claveSEPPrueba, URLBase: s.URL, ClienteHTTP: s.Client()})
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	_, err := c.CrearBootstrap(ctx, solicitudSEPPrueba())
+	_, err := c.CrearBootstrap(ctx)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("deadline leyendo respuesta: %v", err)
 	}

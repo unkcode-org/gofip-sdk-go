@@ -47,31 +47,6 @@ func (s *Secreto) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type SolicitudCrearSesionEmbedded struct {
-	Permisos []PermisoEmbedded `json:"permissions"`
-}
-
-// Validar no cambia el orden de los permisos. El techo de
-// autorización pertenece al backend y no puede verificarse localmente.
-func (s SolicitudCrearSesionEmbedded) Validar() error {
-	if len(s.Permisos) == 0 {
-		return errors.New("se requiere al menos un permiso Embedded")
-	}
-	vistos := make(map[PermisoEmbedded]bool, len(s.Permisos))
-	for _, p := range s.Permisos {
-		switch p {
-		case PermisoFacturasLeer, PermisoFacturasCrear, PermisoClientesLeer, PermisoClientesEscribir, PermisoPuntosVentaLeer, PermisoPuntosVentaEscribir, PermisoRecurrentesLeer, PermisoRecurrentesEscribir, PermisoWhatsAppLeer, PermisoWhatsAppEscribir, PermisoARCALeer, PermisoARCAEscribir:
-		default:
-			return errors.New("permiso Embedded desconocido")
-		}
-		if vistos[p] {
-			return errors.New("los permisos Embedded no pueden repetirse")
-		}
-		vistos[p] = true
-	}
-	return nil
-}
-
 type RespuestaCrearSesionEmbedded struct {
 	Datos DatosCrearSesionEmbedded `json:"data"`
 }
