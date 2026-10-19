@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	gofip "github.com/unkcode-org/gofip-sdk-go/v2"
-	sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +17,7 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	respuesta, err := c.CrearSesion(ctx, sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}})
+	respuesta, err := c.CrearSesion(ctx)
 	if err != nil {
 		log.Fatal("no se pudo completar la operación SEP")
 	}

@@ -1,7 +1,6 @@
 package gofip
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,24 +8,17 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-
-	"github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
 )
 
 var patronCodigoSEP = regexp.MustCompile(`^[0-9]{5}$`)
 
-func (c *ClienteSEP) post(ctx context.Context, ruta string, solicitud sep.SolicitudCrearSesionEmbedded, destino any) error {
-	contenido, err := json.Marshal(cuerpoDatos[sep.SolicitudCrearSesionEmbedded]{Datos: solicitud})
-	if err != nil {
-		return errors.New("serializar solicitud SEP")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.urlBase+ruta, bytes.NewReader(contenido))
+func (c *ClienteSEP) post(ctx context.Context, ruta string, destino any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.urlBase+ruta, nil)
 	if err != nil {
 		return errors.New("crear solicitud SEP")
 	}
 	req.Header.Set("Authorization", "IntegrationKey "+c.clave)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
 	// Sin Idempotency-Key y sin política de reintentos: estos POST crean capacidades.
 	resp, err := c.cliente.Do(req)
 	if err != nil {

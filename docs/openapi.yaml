@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
     title: GO ARCA API
-    version: "3.0.0"
+    version: "4.0.0"
     description: >-
         API REST para gestión de emisores, puntos de venta, credenciales API y
-        facturación electrónica con ARCA. Todos los cuerpos JSON de entrada usan el
+        facturación electrónica con ARCA. Los POST M2M de sesión/bootstrap Embedded no llevan cuerpo. Los cuerpos JSON de entrada usan el
         sobre `{"data": ...}` que declara cada operación. Los errores se devuelven con
         la estructura `DetallesError`, compatible con RFC 7807; `detail` se localiza
         en español por defecto y acepta `Accept-Language: es` o `en`.
@@ -479,13 +479,13 @@ paths:
             $ref: "#/components/responses/Error"
           "500":
             $ref: "#/components/responses/Error"
-    /api/v2/emisores/{id-emisor}/integraciones-sep/{integracion-id}/permisos:
+    /api/v2/emisores/{id-emisor}/integraciones-sep/{integracion-id}/credenciales/{credencial-id}/permisos:
       put:
         tags:
           - Integraciones SEP
-        operationId: actualizarPermisosSEP
-        summary: Reemplaza los permisos de la integración
-        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Se aplica a nuevas autenticaciones/autorizaciones. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
+        operationId: actualizarPermisosCredencialSEP
+        summary: Reemplaza los permisos de una credencial SEP
+        description: Requiere CookieAuth y pertenencia obligatoria del emisor. Una integración o credencial fuera del padre responde 404. Sólo integraciones SEP pertenecientes directamente al emisor; los clientes globales no son accesibles. Los bodies son estrictos; no aceptan emisor, usuario, cliente interno ni scopes. Reemplaza exclusivamente los permisos de esa credencial, sin regenerar secreto ni alterar otras claves. Se aplica a nuevas capacidades. Las sesiones y capacidades ya emitidas conservan su vencimiento actual.
         security:
           - CookieAuth: []
         parameters:
@@ -503,6 +503,11 @@ paths:
             schema:
               type: string
               format: uuid
+          - name: credencial-id
+            in: path
+            required: true
+            description: Credencial concreta perteneciente a la integración autorizada.
+            schema: {type: string, format: uuid}
         requestBody:
           required: true
           content:
@@ -515,7 +520,7 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: "#/components/schemas/IntegracionSEP"
+                  $ref: "#/components/schemas/CredencialSEP"
           "400":
             $ref: "#/components/responses/Error"
           "401":
@@ -3082,6 +3087,33 @@ paths:
                 "404": {$ref: "#/components/responses/Error"}
                 "500": {$ref: "#/components/responses/Error"}
 
+    /api/v2/admin/integration-clients/{integration-client-id}/credentials/{credential-id}/permissions:
+        put:
+            tags: [Integraciones Embedded]
+            operationId: actualizarPermisosCredencialIntegracion
+            summary: Reemplaza los permisos Embedded de una Integration Key
+            description: Requiere RBAC admin de gestión de integraciones. Sólo modifica la credencial del padre indicado; no regenera secreto, hash ni scopes. Afecta nuevas capacidades; las existentes conservan snapshot y TTL. Un conjunto vacío impide crear nuevas sesiones/bootstrap.
+            security: [{CookieAuth: []}]
+            parameters:
+                - {$ref: "#/components/parameters/IdClienteIntegracion"}
+                - {$ref: "#/components/parameters/IdCredencialIntegracion"}
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema: {$ref: "#/components/schemas/CuerpoPermisosSEP"}
+            responses:
+                "200":
+                    description: Metadatos seguros de la credencial actualizada.
+                    content:
+                        application/json:
+                            schema: {$ref: "#/components/schemas/CredencialIntegracion"}
+                "400": {$ref: "#/components/responses/Error"}
+                "401": {$ref: "#/components/responses/Error"}
+                "403": {$ref: "#/components/responses/Error"}
+                "404": {$ref: "#/components/responses/Error"}
+                "500": {$ref: "#/components/responses/Error"}
+
     /api/v2/embedded/bootstrap/exchange:
         post:
             tags: [Integraciones Embedded]
@@ -3123,13 +3155,13 @@ paths:
             tags: [Integraciones Embedded]
             operationId: crearBootstrapEmbedded
             summary: Crea un bootstrap de recuperación Embedded
-            description: Autentica exclusivamente la IntegrationKey y vuelve a resolver el emisor y el techo de permisos de la integración autenticada. No acepta Document Capability, no crea un documento y no crea una sesión de navegador.
+            description: >-
+                Las sesiones Embedded heredan automáticamente todos los permisos configurados en la credencial de integración autenticada.
+                Autentica exclusivamente IntegrationKey con scope embedded_session:create y deriva el emisor de su integración.
+                POST sin cuerpo ni parámetros query. No acepta permisos ni selección de emisor del consumidor.
+                Una credencial sin permisos Embedded recibe 403. La capacidad contiene un snapshot; cambios posteriores
+                sólo afectan nuevas capacidades. El bootstrap es de un solo uso; no representa aún una sesión de navegador.
             security: [{IntegrationKeyAuth: []}]
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema: {$ref: "#/components/schemas/CuerpoSolicitudCrearSesionEmbedded"}
             responses:
                 "201":
                     description: Bootstrap de un solo uso creado.
@@ -3150,17 +3182,12 @@ paths:
             operationId: crearSesionEmbedded
             summary: Crea un bootstrap Embedded de un solo uso
             description: >-
-                Autentica exclusivamente una IntegrationKey M2M con el alcance
-                `embedded_session:create`. El emisor GOFIP se obtiene exclusivamente de la integración autenticada; nunca enviar `emisor_id`
-                ni `integration_client_id`. `bootstrap_token` es secreto, se devuelve una sola
-                vez, vence pronto y se canjea una sola vez mediante
-                `POST /api/v2/embedded/bootstrap/exchange`; aún no representa una sesión de navegador.
+                Las sesiones Embedded heredan automáticamente todos los permisos configurados en la credencial de integración autenticada.
+                Autentica exclusivamente IntegrationKey con scope embedded_session:create y deriva el emisor de su integración.
+                POST sin cuerpo ni parámetros query. No acepta permisos ni selección de emisor del consumidor.
+                Una credencial sin permisos Embedded recibe 403. La capacidad contiene un snapshot; cambios posteriores
+                sólo afectan nuevas capacidades. El bootstrap es de un solo uso; no representa aún una sesión de navegador.
             security: [{IntegrationKeyAuth: []}]
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema: {$ref: "#/components/schemas/CuerpoSolicitudCrearSesionEmbedded"}
             responses:
                 "201":
                     description: Bootstrap creado; conservar el token sólo para el canje inmediato y no registrarlo.
@@ -5058,7 +5085,6 @@ components:
             - name
             - allowed_origin
             - status
-            - permissions
             - created_at
             - updated_at
           properties:
@@ -5077,12 +5103,6 @@ components:
               format: uri
             status:
               $ref: "#/components/schemas/EstadoClienteIntegracion"
-            permissions: &a5
-              type: array
-              description: Permisos permitidos al sistema; vacío no autoriza operaciones.
-              uniqueItems: true
-              items:
-                $ref: "#/components/schemas/PermisoEmbedded"
             created_at: &a1
               type: string
               description: Fecha de creación.
@@ -5095,12 +5115,23 @@ components:
           type: object
           additionalProperties: false
           required:
+            - name
+            - permissions
+            - scopes
             - id
             - secret_prefix
             - status
             - created_at
             - updated_at
           properties:
+            name: {type: string, minLength: 1, maxLength: 120, description: Nombre de esta Integration Key.}
+            permissions: &a5
+              type: array
+              description: Permisos propios de esta credencial. Las capacidades nuevas heredan todo el conjunto; vacío impide emitir sesión/bootstrap. invoices:create está reservado, sin emisión manual Embedded.
+              uniqueItems: true
+              items:
+                $ref: "#/components/schemas/PermisoEmbedded"
+            scopes: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/AlcanceIntegracion"}, description: Scope M2M fijo embedded_session:create en gestión SEP.}
             id:
               type: string
               description: Identificador de credencial.
@@ -5178,8 +5209,10 @@ components:
             data:
               type: object
               additionalProperties: false
-              required: []
+              required: [name, permissions]
               properties:
+                name: {type: string, minLength: 1, maxLength: 120, description: Nombre de la credencial.}
+                permissions: *a5
                 expires_at:
                   type: string
                   description: Vencimiento futuro opcional.
@@ -5239,7 +5272,7 @@ components:
             enum: ["embedded_session:create"]
         PermisoEmbedded:
             type: string
-            description: Capacidad máxima que una futura sesión Embedded podrá solicitar para la integración.
+            description: Permiso funcional de credencial y snapshot Embedded; separado del scope M2M. invoices:create está reservado y no habilita emisión manual Embedded. WhatsApp y ARCA tienen UI parcial.
             enum:
                 - "invoices:read"
                 - "invoices:create"
@@ -5272,11 +5305,10 @@ components:
                       code: {$ref: "#/components/schemas/CodigoErrorIntegracionEmbedded"}
         ClienteIntegracion:
             type: object
-            required: [id, emisor_id, permissions, name, status, allowed_origin, created_at, updated_at]
+            required: [id, emisor_id, name, status, allowed_origin, created_at, updated_at]
             properties:
                 id: {type: string, format: uuid, description: UUIDv7 del cliente de integración.}
                 emisor_id: {type: string, format: uuid, description: Emisor propietario inmutable.}
-                permissions: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/PermisoEmbedded"}, description: Techo de permisos de la integración.}
                 name: {type: string, description: Nombre administrativo de la plataforma externa.}
                 status: {$ref: "#/components/schemas/EstadoClienteIntegracion"}
                 allowed_origin: {type: string, format: uri, description: "Origen exacto reservado para la futura política de embedding; nunca incluye ruta, consulta, fragmento ni comodín."}
@@ -5292,10 +5324,12 @@ components:
                     items: {$ref: "#/components/schemas/ClienteIntegracion"}
         CuerpoSolicitudCrearClienteIntegracion:
             type: object
+            additionalProperties: false
             required: [data]
             properties:
                 data:
                     type: object
+                    additionalProperties: false
                     description: Datos del nuevo cliente de integración, asociado a un único emisor.
                     required: [emisor_id, name, allowed_origin]
                     properties:
@@ -5304,21 +5338,24 @@ components:
                         allowed_origin: {type: string, format: uri, description: "Origen HTTP(S) exacto sin path, query, fragmento ni comodín."}
         CuerpoSolicitudActualizarClienteIntegracion:
             type: object
+            additionalProperties: false
             required: [data]
             properties:
                 data:
                     type: object
+                    additionalProperties: false
                     minProperties: 1
                     description: Campos administrativos a modificar. El emisor propietario es inmutable.
                     properties:
                         name: {type: string, minLength: 1, maxLength: 120, description: Nuevo nombre administrativo.}
                         status: {$ref: "#/components/schemas/EstadoClienteIntegracion"}
                         allowed_origin: {type: string, format: uri, description: "Nuevo origen HTTP(S) exacto sin path, query, fragmento ni comodín."}
-                        permissions: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/PermisoEmbedded"}, description: Nuevo techo de permisos de la integración.}
         CredencialIntegracion:
             type: object
-            required: [id, integration_client_id, secret_prefix, status, scopes, created_at, updated_at]
+            required: [name, permissions, id, integration_client_id, secret_prefix, status, scopes, created_at, updated_at]
             properties:
+                name: {type: string, minLength: 1, maxLength: 120, description: Nombre de la Integration Key.}
+                permissions: *a5
                 id: {type: string, format: uuid, description: UUIDv7 de la credencial.}
                 integration_client_id: {type: string, format: uuid, description: Cliente de integración propietario.}
                 secret_prefix: {type: string, example: gofip_int_abcdEFGH1234_567, description: Identificador público seguro para mostrar y buscar la credencial.}
@@ -5328,7 +5365,7 @@ components:
                 scopes:
                     type: array
                     uniqueItems: true
-                    description: Alcances M2M de la credencial; son independientes de los permisos Embedded de la integración.
+                    description: Alcances M2M de la credencial; son independientes de los permisos Embedded de la misma credencial.
                     items: {$ref: "#/components/schemas/AlcanceIntegracion"}
                 created_at: {type: string, format: date-time, description: Fecha de creación.}
                 updated_at: {type: string, format: date-time, description: Fecha de última actualización.}
@@ -5346,21 +5383,18 @@ components:
             properties:
                 data:
                     type: object
+                    additionalProperties: false
+                    required: [name, permissions]
                     description: Configuración de la nueva credencial M2M.
                     properties:
+                        name: {type: string, minLength: 1, maxLength: 120, description: Nombre de la Integration Key.}
+                        permissions: *a5
                         scopes:
                             type: array
                             uniqueItems: true
                             description: Alcances M2M explícitos; omitirlos crea una credencial autenticable sin autorizaciones.
                             items: {$ref: "#/components/schemas/AlcanceIntegracion"}
                         expires_at: {type: string, format: date-time, description: Vencimiento futuro opcional.}
-        CuerpoSolicitudCrearSesionEmbedded:
-            type: object
-            required: [data]
-            additionalProperties: false
-            properties:
-                data:
-                    $ref: "#/components/schemas/SolicitudCrearSesionEmbedded"
         CuerpoSolicitudCanjearBootstrapEmbedded:
             type: object
             required: [data]
@@ -5377,17 +5411,6 @@ components:
                     type: string
                     pattern: '^gofip_emb_[A-Za-z0-9_-]{43}$'
                     description: Capacidad opaca, breve y de un único uso. Enviar sólo en este cuerpo POST; no usar query parameters.
-        SolicitudCrearSesionEmbedded:
-            type: object
-            required: [permissions]
-            additionalProperties: false
-            properties:
-                permissions:
-                    type: array
-                    minItems: 1
-                    uniqueItems: true
-                    description: Permisos exactos solicitados para la futura sesión; deben ser subconjunto del techo de la integración.
-                    items: {$ref: "#/components/schemas/PermisoEmbedded"}
         RespuestaCrearSesionEmbedded:
             type: object
             required: [data]

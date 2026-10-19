@@ -12,7 +12,6 @@ import (
 	gofip "github.com/unkcode-org/gofip-sdk-go/v2"
 	"github.com/unkcode-org/gofip-sdk-go/v2/modelos/documentos"
 	"github.com/unkcode-org/gofip-sdk-go/v2/modelos/facturacion"
-	sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
 )
 
 // Consume la API pública desde un módulo separado y verifica el contrato HTTP
@@ -81,15 +80,14 @@ func TestConsumidorV2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	solicitud := sepmodel.SolicitudCrearSesionEmbedded{Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer}}
-	sesion, err := sep.CrearSesion(ctx, solicitud)
+	sesion, err := sep.CrearSesion(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sesion.Datos.TokenBootstrap.Valor() == "" {
 		t.Fatal("capacidad ausente")
 	}
-	if _, err := sep.CrearBootstrap(ctx, solicitud); err != nil {
+	if _, err := sep.CrearBootstrap(ctx); err != nil {
 		t.Fatal(err)
 	}
 }

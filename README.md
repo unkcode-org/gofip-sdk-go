@@ -344,20 +344,15 @@ idempotencia y límites de PDF. No hay batch ni emisión como fallback.
 ## Integraciones SEP: un cliente y una credencial distintos
 
 ```go
-import sepmodel "github.com/unkcode-org/gofip-sdk-go/v2/modelos/sep"
-
 clienteSEP, err := gofip.NuevoClienteSEP(gofip.OpcionesClienteSEP{
     ClaveIntegracion: os.Getenv("GOFIP_SEP_KEY"),
     URLBase: os.Getenv("GOFIP_API_URL"), // obligatoria, sin valor por defecto
     ClienteHTTP: &http.Client{Timeout: 15 * time.Second},
 })
 if err != nil { return err }
-solicitud := sepmodel.SolicitudCrearSesionEmbedded{
-    Permisos: []sepmodel.PermisoEmbedded{sepmodel.PermisoFacturasLeer},
-}
-sesion, err := clienteSEP.CrearSesion(ctx, solicitud)
+sesion, err := clienteSEP.CrearSesion(ctx)
 // Ante una recuperación, solicitar un bootstrap nuevo:
-bootstrap, err := clienteSEP.CrearBootstrap(ctx, solicitud)
+bootstrap, err := clienteSEP.CrearBootstrap(ctx)
 ```
 
 | Credencial | Cliente | Uso |
@@ -366,9 +361,8 @@ bootstrap, err := clienteSEP.CrearBootstrap(ctx, solicitud)
 | `GOFIP_SEP_KEY` | `NuevoClienteSEP` | IntegrationKey; iniciar y recuperar acceso Embedded |
 
 SEP envía exclusivamente `Authorization: IntegrationKey ...`, sin ambiente ARCA.
-Crea requests `data` y decodifica responses `data`. Los permisos se validan contra
-los doce valores de OpenAPI: no admite listas vacías, valores desconocidos ni
-duplicados. Sólo el backend decide si caben dentro del techo autorizado.
+Envía POST sin cuerpo y decodifica responses `data`. El backend carga todos los permisos
+Embedded de la credencial autenticada; el consumidor no replica ni selecciona permisos.
 `invoices:create` es un valor del enum y no agrega un endpoint de emisión Embedded.
 
 `CrearSesion` devuelve URL de documento, vencimientos y bootstrap. Todavía no es
@@ -411,8 +405,13 @@ go test -race ./...
 ```
 
 Ver [arquitectura](docs/arquitectura.md) y [validación manual](docs/validacion.md).
-El contrato de referencia es OpenAPI 3.0.0 del backend. No se publica una versión
-como parte de estas pruebas. La secuencia prevista es `v2.0.0-rc.1` → `v2.0.0`,
+El contrato de referencia es OpenAPI 4.0.0 del backend. No se publica una versión
+como parte de estas pruebas. El siguiente prerelease recomendado es `v2.0.0-rc.4` (breaking frente a rc.3),
 con imports `/v2`, validación externa y aprobación de publicación.
 
-SEP deriva el emisor exclusivamente de la Integration Key. CrearSesion y CrearBootstrap reciben solo permisos; la integración pertenece a un único emisor.
+SEP deriva el emisor exclusivamente de la Integration Key. CrearSesion y CrearBootstrap no reciben cuerpo ni permisos. Ambas heredan todos los permisos Embedded de la credencial autenticada; la integración pertenece a un único emisor.
+
+Cambio incompatible desde v2.0.0-rc.3: quitar SolicitudCrearSesionEmbedded y su lista Permisos.
+La Integration Key configura la autorización en GOFIP; no replicar permisos en código ni variables de entorno.
+Sin permisos configurados, ambas operaciones reciben 403. Las capacidades ya emitidas conservan su snapshot y TTL;
+los cambios de permisos sólo afectan capacidades nuevas. No hay publicación/tag desde este cambio; siguiente prerelease sugerido v2.0.0-rc.4.

@@ -28,19 +28,3 @@ func TestSecretoRedactaFormatosJSONYSlog(t *testing.T) {
 		t.Fatal("secreto no string aceptado")
 	}
 }
-
-func TestPermisosExactosYValidacionSinMutaciones(t *testing.T) {
-	permisos := []PermisoEmbedded{PermisoFacturasLeer, PermisoFacturasCrear, PermisoClientesLeer, PermisoClientesEscribir, PermisoPuntosVentaLeer, PermisoPuntosVentaEscribir, PermisoRecurrentesLeer, PermisoRecurrentesEscribir, PermisoWhatsAppLeer, PermisoWhatsAppEscribir, PermisoARCALeer, PermisoARCAEscribir}
-	if len(permisos) != 12 {
-		t.Fatal("inventario incorrecto")
-	}
-	for _, p := range permisos {
-		s := SolicitudCrearSesionEmbedded{Permisos: []PermisoEmbedded{p}}
-		if err := s.Validar(); err != nil {
-			t.Fatal(err)
-		}
-		if s.Permisos[0] != p {
-			t.Fatal("validación mutó permisos")
-		}
-	}
-}
